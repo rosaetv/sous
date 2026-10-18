@@ -2,7 +2,7 @@
 // La usan Hoy y la guía de estilos.
 
 import { esc, icon } from "./ui.js";
-import { momentoLabel, formatQty } from "./logic/menu.js";
+import { momentoLabel, formatQty, etiquetaInfo } from "./logic/menu.js";
 
 export const MARKS = [
   { id: "comido", emoji: "✅", label: "Comido" },
@@ -67,4 +67,15 @@ export function mealCardHTML(comida, mark, { hasRecipe = false, open = false } =
           : ""
       }
     </article>`;
+}
+
+// Etiquetas del día: 🏢 Oficina, 🏋️ Gym…
+export function tagsHTML(etiquetas) {
+  if (!etiquetas.length) return "";
+  return `<div class="tags">${etiquetas
+    .map((t) => {
+      const info = etiquetaInfo(t);
+      return `<span class="tag tag-${info.tone}">${info.emoji} ${esc(info.label)}</span>`;
+    })
+    .join("")}</div>`;
 }

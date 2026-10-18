@@ -6,8 +6,9 @@
 //   (python3 dev/revisar-sw.py avisa si falta alguno).
 // - Tus datos (menús, marcas, recetas, fotos) no van aquí: viven en IndexedDB.
 
-const VERSION = "1.0.0"; // la reemplaza dev/publicar.py
+const VERSION = "1.4.0"; // la reemplaza dev/publicar.py
 const CACHE = `sous-${VERSION}`;
+const PHOTO_CACHE = "sous-fotos"; // fotos de recetas de otros sitios (imagenUrl): no cambia con cada versión
 
 const FILES = [
   "./",
@@ -21,9 +22,13 @@ const FILES = [
   "icons/icon-512.png",
   "icons/icon.svg",
   "js/app.js",
+  "js/backup.js",
   "js/db.js",
+  "js/lib/imagen.js",
   "js/logic/fechas.js",
   "js/logic/menu.js",
+  "js/logic/resumen.js",
+  "js/logic/super.js",
   "js/logic/validar.js",
   "js/meal-card.js",
   "js/pwa.js",
@@ -31,10 +36,12 @@ const FILES = [
   "js/screens/hoy.js",
   "js/screens/importar.js",
   "js/screens/recetas.js",
+  "js/screens/resumen.js",
   "js/screens/semana.js",
   "js/screens/styleguide.js",
   "js/screens/super.js",
   "js/store.js",
+  "js/swap-day.js",
   "js/ui.js",
   "js/version.js",
   "vendor/lucide.min.js",
@@ -58,7 +65,7 @@ self.addEventListener("install", (event) => {
 async function foreignEntries() {
   const found = [];
   for (const key of await caches.keys()) {
-    if (key.startsWith("sous-")) continue;
+    if (key.startsWith("sous-")) continue; // incluye sous-fotos
     const cache = await caches.open(key);
     for (const request of await cache.keys()) {
       if (request.url.startsWith(self.registration.scope)) found.push({ cache, request });
@@ -72,7 +79,9 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("sous-") && k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k.startsWith("sous-") && k !== CACHE && k !== PHOTO_CACHE).map((k) => caches.delete(k))),
+      )
       .then(() => foreignEntries())
       .then((foreign) => Promise.all(foreign.map(({ cache, request }) => cache.delete(request))))
       .then(() => self.clients.claim()),
@@ -88,7 +97,22 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
+
+  // Fotos de recetas que vienen de otro sitio (imagenUrl): la primera vez que se ven con internet
+  // se guardan, y después se muestran sin conexión.
+  if (url.origin !== self.location.origin) {
+    if (request.destination !== "image") return;
+    event.respondWith(
+      caches.open(PHOTO_CACHE).then(async (cache) => {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        const response = await fetch(request);
+        if (response.ok || response.type === "opaque") cache.put(request, response.clone());
+        return response;
+      }),
+    );
+    return;
+  }
 
   // Abrir la app: siempre la página guardada.
   if (request.mode === "navigate") {

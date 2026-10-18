@@ -1,31 +1,29 @@
 // Hoy: las comidas del día para marcar. También sirve para cualquier otro día (#/dia/2026-10-20).
 
-import { esc, icon, emptyState, openSheet, askSheet, toast } from "../ui.js";
-import { todayISO, fromISO, shortDay } from "../logic/fechas.js";
-import { etiquetaInfo, notasDeHoy } from "../logic/menu.js";
-import { mealCardHTML, SWAP_SUGGESTIONS } from "../meal-card.js";
+import { esc, icon, emptyState, openSheet, toast } from "../ui.js";
+import { todayISO, fromISO, shortDay, addDays } from "../logic/fechas.js";
+import { notasDeHoy } from "../logic/menu.js";
+import { mealCardHTML, tagsHTML, SWAP_SUGGESTIONS } from "../meal-card.js";
 import { weekFor, dayPlan, marksFor, setMark, clearMark, updateMark, swapDays, recipeIds } from "../store.js";
+import { swapTargets, chooseAndSwap } from "../swap-day.js";
 
 function longDate(fecha) {
   const text = fromISO(fecha).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" });
   return text[0].toUpperCase() + text.slice(1); // "Domingo, 18 de octubre"
 }
 
-// Título arriba (igual en todas las pantallas) y la fecha debajo.
+// Título arriba (igual en todas las pantallas), la fecha debajo y flechas para ir al día anterior o siguiente
+// (para marcar o dar feedback de ayer, o ver mañana).
 function header(fecha, isToday) {
+  const today = todayISO();
+  const href = (f) => (f === today ? "#/hoy" : `#/dia/${f}`);
   return `
     <h1 class="screen-title screen-title-with-sub">${isToday ? "Hoy" : esc(longDate(fecha).split(",")[0])}</h1>
-    <p class="screen-sub">${esc(longDate(fecha))}${isToday ? "" : ` · <a href="#/hoy">Ir a hoy</a>`}</p>`;
-}
-
-function tagsHTML(etiquetas) {
-  if (!etiquetas.length) return "";
-  return `<div class="tags">${etiquetas
-    .map((t) => {
-      const info = etiquetaInfo(t);
-      return `<span class="tag tag-${info.tone}">${info.emoji} ${esc(info.label)}</span>`;
-    })
-    .join("")}</div>`;
+    <div class="week-nav day-nav">
+      <p class="day-nav-date">${esc(longDate(fecha))}${isToday ? "" : ` · <a href="#/hoy">Ir a hoy</a>`}</p>
+      <a class="icon-btn" href="${href(addDays(fecha, -1))}" aria-label="Día anterior">${icon("chevron-left")}</a>
+      <a class="icon-btn" href="${href(addDays(fecha, 1))}" aria-label="Día siguiente">${icon("chevron-right")}</a>
+    </div>`;
 }
 
 function progressHTML(comidas, marks) {
@@ -45,13 +43,6 @@ function macrosLine(macros) {
     macros.fibra != null && `${macros.fibra} g fibra`,
   ].filter(Boolean);
   return parts.length ? `<p class="small muted day-macros">${parts.join(" · ")}</p>` : "";
-}
-
-// ¿El menú de otro día estaba pensado para un tipo de día que hoy no es? (oficina, gym)
-// Solo avisa en ese sentido: al revés saldría en casi todos los días y dejaría de servir.
-function mismatch(etiquetasHoy, etiquetasMenu) {
-  const tag = ["oficina", "gym"].find((t) => etiquetasMenu.includes(t) && !etiquetasHoy.includes(t));
-  return tag ? `Era para día de ${etiquetaInfo(tag).label.toLowerCase()}` : "";
 }
 
 export async function renderHoy(view, fechaParam) {
@@ -79,12 +70,7 @@ export async function renderHoy(view, fechaParam) {
   const etiquetasSemana = [...new Set(semana.dias.flatMap((d) => d.etiquetas))];
   const notas = notasDeHoy(semana.notasFijas, plan.etiquetas, etiquetasSemana);
 
-  // Días a los que se puede cambiar: los que faltan esta semana (los pasados ya se comieron).
-  const swapOptions = semana.dias
-    .map((d) => d.fecha)
-    .filter((f) => f !== fecha && f >= today)
-    .map((f) => ({ fecha: f, plan: dayPlan(semana, f) }))
-    .filter((o) => o.plan);
+  const swapOptions = swapTargets(semana, fecha, today);
 
   const card = (comida) =>
     mealCardHTML(comida, marks[comida.momento], { hasRecipe: comida.recetaId && recetas.has(comida.recetaId), open: open.has(comida.momento) });
@@ -176,49 +162,7 @@ export async function renderHoy(view, fechaParam) {
   }
 
   async function chooseDay() {
-    const { sheet, close } = openSheet(
-      `
-      <h2 class="title sheet-title">¿Qué menú comes ${isToday ? "hoy" : "este día"}?</h2>
-      <p class="muted" style="margin-top: 4px">Se intercambia el día completo. Puedes deshacerlo.</p>
-      <div class="day-options">
-        ${swapOptions
-          .map(({ fecha: f, plan: p }) => {
-            const main = p.comidas.find((c) => c.momento === "comida") || p.comidas[0];
-            const warn = mismatch(plan.etiquetas, p.etiquetasOrigen); // para qué tipo de día era ese menú
-            return `
-            <button class="day-option" data-day="${f}">
-              <span class="day-option-date">${esc(shortDay(f))}</span>
-              <span class="day-option-text">
-                <span>${esc(main?.plato || "")}</span>
-                ${warn ? `<span class="day-option-warn">${icon("info")} ${esc(warn)}</span>` : ""}
-              </span>
-              ${icon("chevron-right", "icon chevron")}
-            </button>`;
-          })
-          .join("")}
-      </div>`,
-      { label: "Elegir otro menú" },
-    );
-    sheet.addEventListener("click", async (e) => {
-      const other = e.target.closest("[data-day]")?.dataset.day;
-      if (!other) return;
-      close();
-      const otherMarks = await marksFor(other);
-      if (Object.keys(marks).length || Object.keys(otherMarks).length) {
-        const answer = await askSheet({
-          title: "Ya marcaste comidas de estos días",
-          text: "Las marcas se quedan en su día; solo cambia el menú.",
-          actions: [
-            { id: "swap", label: "Intercambiar", style: "primary" },
-            { id: "cancel", label: "Cancelar", style: "ghost" },
-          ],
-        });
-        if (answer !== "swap") return;
-      }
-      await swapDays(semana.inicio, fecha, other);
-      toast(`Listo: ${isToday ? "hoy" : shortDay(fecha)} comes el menú del ${shortDay(other)}`);
-      renderHoy(view, fechaParam);
-    });
+    if (await chooseAndSwap({ semana, fecha, today })) renderHoy(view, fechaParam);
   }
 
   view.onclick = async (event) => {

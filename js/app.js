@@ -7,6 +7,7 @@ import { renderSuper } from "./screens/super.js";
 import { renderAjustes } from "./screens/ajustes.js";
 import { renderStyleguide } from "./screens/styleguide.js";
 import { renderImportar } from "./screens/importar.js";
+import { renderResumen } from "./screens/resumen.js";
 import { icon } from "./ui.js";
 import { setupPWA } from "./pwa.js";
 
@@ -17,12 +18,16 @@ const routes = [
   [/^hoy$/, renderHoy, "hoy"],
   [/^dia\/(\d{4}-\d{2}-\d{2})$/, renderHoy, "hoy"],
   [/^semana$/, renderSemana, "semana"],
+  [/^semana\/(\d{4}-\d{2}-\d{2})$/, renderSemana, "semana"],
   [/^recetas$/, renderRecetas, "recetas"],
   [/^receta\/(.+)$/, renderRecetas, "recetas"], // detalle: etapa 6
   [/^super$/, renderSuper, "super"],
+  [/^super\/(\d{4}-\d{2}-\d{2})$/, renderSuper, "super"],
   [/^ajustes$/, renderAjustes, "ajustes"],
   [/^styleguide$/, renderStyleguide, "ajustes"],
   [/^importar$/, renderImportar, "ajustes"],
+  [/^resumen$/, renderResumen, "ajustes"],
+  [/^resumen\/(\d{4}-\d{2}-\d{2})$/, renderResumen, "ajustes"],
 ];
 
 // Íconos de la barra inferior (el texto de la pestaña queda debajo).

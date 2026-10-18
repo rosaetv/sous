@@ -1,7 +1,7 @@
 // Guardar y leer los datos de la app. Las pantallas solo hablan con este archivo.
 
 import { db } from "./db.js";
-import { rangeLabel } from "./logic/fechas.js";
+import { rangeLabel, todayISO } from "./logic/fechas.js";
 
 const now = () => new Date().toISOString();
 
@@ -50,7 +50,9 @@ async function importMenu(menu) {
     title: `Menú del ${rangeLabel(menu.inicio, menu.fin)}`,
     detail: `${plural(menu.dias.length, "día", "días")} · ${plural(comidas, "comida", "comidas")}${menu.batch.length ? " · batch" : ""}`,
     replaced: overlapping.length > 0,
-    go: { href: "#/hoy", label: "Ver Hoy" },
+    // Un menú que aún no empieza (lo normal: lo importas el fin de semana): se abre esa semana.
+    // Hoy sigue mostrando tu día de hoy.
+    go: menu.inicio > todayISO() ? { href: `#/semana/${menu.inicio}`, label: "Ver la semana" } : { href: "#/hoy", label: "Ver Hoy" },
   };
 }
 
@@ -186,4 +188,145 @@ export async function swapDays(inicio, a, b) {
 
 export async function recipeIds() {
   return new Set(await db.getAllKeys("recetas"));
+}
+
+// ---------- Semanas ----------
+
+export async function allWeeks() {
+  return (await db.getAll("semanas")).sort((a, b) => (a.inicio < b.inicio ? -1 : 1));
+}
+
+// La semana para abrir por defecto: la de hoy; si no hay, la próxima; si no, la última.
+export function defaultWeek(semanas, today) {
+  return (
+    semanas.find((s) => s.inicio <= today && s.fin >= today) ||
+    semanas.find((s) => s.inicio > today) ||
+    semanas.at(-1) ||
+    null
+  );
+}
+
+// ---------- Palomitas (batch y súper) ----------
+// Clave: "2026-10-19|batch|0|1" o "2026-10-19|super|avena".
+
+export async function checksWithPrefix(prefix) {
+  return new Set((await db.getAllKeys("checks")).filter((k) => k.startsWith(prefix)));
+}
+
+// value: true (hecho) o un objeto con más detalle, como { estado: "parcial", llevo: "2 latas" }.
+// Falso o vacío: se quita la palomita.
+export async function setCheck(key, value) {
+  if (value) await db.put("checks", value, key);
+  else await db.delete("checks", key);
+}
+
+// Las palomitas con su valor: Map de clave → valor.
+export async function checksMap(prefix) {
+  const database = await db.getAllKeys("checks");
+  const keys = database.filter((k) => k.startsWith(prefix));
+  const values = await Promise.all(keys.map((k) => db.get("checks", k)));
+  return new Map(keys.map((k, i) => [k, values[i]]));
+}
+
+// ---------- Súper ----------
+
+export async function allLists() {
+  return (await db.getAll("listas")).sort((a, b) => (a.semanaInicio < b.semanaInicio ? -1 : 1));
+}
+
+// La lista para abrir por defecto: la última que importaste (normalmente vas al súper justo después).
+export function defaultList(listas) {
+  return listas.reduce((best, l) => (!best || (l.importadoEn || "") > (best.importadoEn || "") ? l : best), null);
+}
+
+export async function clearChecks(prefix) {
+  const keys = await checksWithPrefix(prefix);
+  await db.transaction(["checks"], ({ checks }) => keys.forEach((k) => checks.delete(k)));
+}
+
+// ---------- Recetas y fotos ----------
+
+export async function allRecipes() {
+  return (await db.getAll("recetas")).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+}
+
+export function getRecipe(id) {
+  return db.get("recetas", id);
+}
+
+// Fotos de todas las recetas: Map de id → { blob, origen, url }.
+export async function allPhotos() {
+  const [keys, values] = await Promise.all([db.getAllKeys("fotos"), db.getAll("fotos")]);
+  return new Map(keys.map((k, i) => [k, values[i]]));
+}
+
+export function getPhoto(id) {
+  return db.get("fotos", id);
+}
+
+// origen "usuario": la pusiste tú (nunca se reemplaza sola). origen "url": copia de imagenUrl.
+export function savePhoto(id, blob, origen, url = "") {
+  return db.put("fotos", { blob, origen, url, actualizadoEn: now() }, id);
+}
+
+export function deletePhoto(id) {
+  return db.delete("fotos", id);
+}
+
+// Guarda en el teléfono la foto de imagenUrl, para verla sin conexión.
+// Solo si no pusiste una tuya. Si el sitio no deja descargarla, no pasa nada:
+// se sigue viendo con internet (y el modo sin conexión la guarda al verla).
+export async function cacheRecipeImage(receta) {
+  if (!receta.imagenUrl) return false;
+  const existing = await getPhoto(receta.id);
+  if (existing && (existing.origen === "usuario" || existing.url === receta.imagenUrl)) return false;
+  try {
+    const response = await fetch(receta.imagenUrl, { mode: "cors" });
+    if (!response.ok) return false;
+    const blob = await response.blob();
+    if (!blob.type.startsWith("image/")) return false;
+    // Mientras se descargaba pudiste poner tu foto: la tuya gana.
+    if ((await getPhoto(receta.id))?.origen === "usuario") return false;
+    await savePhoto(receta.id, blob, "url", receta.imagenUrl);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ---------- Resumen para Claude ----------
+
+export async function summaryData(semana) {
+  const plans = semana.dias.map((d) => dayPlan(semana, d.fecha)).filter(Boolean);
+  const [marks, lista] = await Promise.all([marksBetween(semana.inicio, semana.fin), db.get("listas", semana.inicio)]);
+  const prefix = `${semana.inicio}|super|`;
+  const listChecks = new Map([...(await checksMap(prefix))].map(([k, v]) => [k.slice(prefix.length), v]));
+  return { semana, plans, marks, lista: lista || null, listChecks };
+}
+
+// ---------- Borrar una semana ----------
+// Borra el menú, las marcas de esos días, las palomitas (batch y súper) y la lista del súper.
+export async function deleteWeek(inicio) {
+  const semana = await db.get("semanas", inicio);
+  if (!semana) return;
+  const marcas = await marksBetween(semana.inicio, semana.fin);
+  const checks = await checksWithPrefix(`${inicio}|`);
+  await db.transaction(["semanas", "marcas", "checks", "listas"], (s) => {
+    s.semanas.delete(inicio);
+    marcas.forEach((m) => s.marcas.delete(m.clave));
+    checks.forEach((k) => s.checks.delete(k));
+    s.listas.delete(inicio);
+  });
+}
+
+// Lo que has dicho de una receta cada vez que la comiste: para ver de un vistazo si funciona.
+export async function recipeHistory(recetaId) {
+  const marks = (await db.getAll("marcas")).filter((m) => m.recetaId === recetaId).sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
+  return {
+    comida: marks.filter((m) => m.estado === "comido").length,
+    cambiada: marks.filter((m) => m.estado !== "comido").length,
+    up: marks.filter((m) => m.valoracion === "up").length,
+    down: marks.filter((m) => m.valoracion === "down").length,
+    notas: marks.filter((m) => m.nota).map((m) => ({ fecha: m.fecha, nota: m.nota, valoracion: m.valoracion })),
+  };
 }

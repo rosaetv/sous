@@ -266,6 +266,15 @@ ul {
   color: var(--color-primary-deep);
 }
 
+.day-nav-date {
+  flex: 1;
+  color: var(--color-text-muted);
+}
+
+.day-nav-date a {
+  color: var(--color-primary-deep);
+}
+
 /* "Comes el menú del Jue 22 · Deshacer" */
 .swap-banner {
   display: flex;
@@ -386,6 +395,497 @@ ul {
 
 .day-option .chevron {
   color: var(--color-text-faint);
+}
+
+/* ---------- Semana ---------- */
+
+.week-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.week-nav .icon-btn.is-off {
+  box-shadow: none;
+  background: transparent;
+  color: var(--color-decor);
+}
+
+.week-range {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  font-size: var(--font-size-lg);
+  font-weight: var(--weight-title);
+}
+
+.week-range .small {
+  font-weight: 400;
+}
+
+.week-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.week-bar {
+  display: flex;
+  gap: 4px;
+}
+
+.week-bar span {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-decor);
+}
+
+.week-bar [data-state="comido"] { background: var(--eaten-dot); }
+.week-bar [data-state="cambiado"] { background: var(--swapped-dot); }
+.week-bar [data-state="no"] { background: var(--skipped-dot); }
+
+.days {
+  margin-top: var(--space-5);
+  gap: var(--space-3);
+}
+
+.day {
+  padding: 0;
+  overflow: hidden;
+}
+
+.day.is-today {
+  box-shadow: inset 0 0 0 1.5px var(--color-accent), var(--shadow-card);
+}
+
+.day-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 64px;
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--card-padding);
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+.day-head-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.day-name {
+  font-weight: var(--weight-title);
+}
+
+.today-badge {
+  margin-left: 4px;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-deep);
+  font-size: var(--font-size-xs);
+  font-weight: var(--weight-label);
+}
+
+.day-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.day-meta:empty {
+  display: none;
+}
+
+.day-swapped {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  color: var(--tag-blue-ink);
+}
+
+.day-swapped .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.day-head .chevron {
+  color: var(--color-text-faint);
+}
+
+/* Estado de cada comida: círculo vacío o con ícono */
+.dots {
+  display: flex;
+  gap: 4px;
+}
+
+.dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  box-shadow: inset 0 0 0 1.5px var(--color-decor);
+  color: #fff;
+}
+
+.dot .icon {
+  width: 12px;
+  height: 12px;
+  stroke-width: 3;
+}
+
+.dot[data-state="comido"] { background: var(--eaten-dot); box-shadow: none; }
+.dot[data-state="cambiado"] { background: var(--swapped-dot); box-shadow: none; }
+.dot[data-state="no"] { background: var(--skipped-dot); box-shadow: none; }
+
+.day-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 0 var(--card-padding) var(--card-padding);
+  animation: fade-in var(--transition-soft);
+}
+
+.day-meals li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 10px 0;
+  border-top: 1px solid var(--color-divider);
+}
+
+.day-meals .dot {
+  margin-top: 2px;
+}
+
+.day-meal-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.day-meal-moment {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.day-meal-swap {
+  color: var(--swapped-ink);
+  font-size: var(--font-size-sm);
+}
+
+/* Macros del día */
+.macros {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.macro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+}
+
+.macro-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--weight-title);
+  white-space: nowrap;
+}
+
+.macro-label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.day-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.day-actions .btn {
+  min-height: 48px;
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+/* ---------- Checklist (batch y súper) ---------- */
+
+.batch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.batch-when {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.batch-when .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-divider);
+  background: none;
+  text-align: left;
+}
+
+.checklist li:last-child .check-row {
+  border-bottom: 0;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  margin-top: -2px;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1.5px var(--color-decor);
+  color: transparent;
+  transition: background var(--transition-fast);
+}
+
+.checkbox .icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.5;
+}
+
+.check-row[aria-pressed="true"] .checkbox {
+  background: var(--color-accent);
+  box-shadow: none;
+  color: #fff;
+  animation: pop var(--transition-pop);
+}
+
+.check-row[aria-pressed="true"] > span:last-child:not(.item-text) {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.check-row:disabled {
+  cursor: default;
+  color: inherit;
+}
+
+/* ---------- Súper ---------- */
+
+.super-filter {
+  margin-bottom: var(--space-4);
+}
+
+.super-sections {
+  margin-top: var(--space-4);
+}
+
+.super-section {
+  padding-top: var(--space-4);
+  padding-bottom: var(--space-2);
+}
+
+.section-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--weight-label);
+}
+
+.section-name .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--color-accent);
+}
+
+.super-section.is-done {
+  opacity: 0.7;
+}
+
+.item-row {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.checklist .item-row:last-child {
+  border-bottom: 0;
+}
+
+/* La casilla tiene su propio botón (un toque = comprado) */
+.item-box {
+  display: flex;
+  align-items: flex-start;
+  width: 48px;
+  flex-shrink: 0;
+  padding: 12px 0;
+  border: 0;
+  background: none;
+}
+
+/* El nombre abre Todo / Una parte / No había */
+.item-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 52px;
+  padding: 12px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+.item-meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.item-meta.is-partial {
+  color: var(--swapped-ink);
+}
+
+.item-row[data-state="todo"] .checkbox {
+  background: var(--color-accent);
+  box-shadow: none;
+  color: #fff;
+  animation: pop var(--transition-pop);
+}
+
+.item-row[data-state="parcial"] .checkbox {
+  background: var(--swapped-dot);
+  box-shadow: none;
+  color: #fff;
+}
+
+.item-row[data-state="nohabia"] .checkbox {
+  background: var(--skipped-dot);
+  box-shadow: none;
+  color: #fff;
+}
+
+.item-row[data-state="todo"] .item-name,
+.item-row[data-state="nohabia"] .item-name {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+/* Hoja de un artículo */
+.item-options {
+  margin-top: var(--space-5);
+  gap: var(--space-2);
+}
+
+.item-options .option {
+  justify-content: flex-start;
+}
+
+.item-options .option[aria-pressed="true"] {
+  background: var(--color-primary-soft);
+  box-shadow: inset 0 0 0 1.5px var(--color-accent);
+  color: var(--color-primary-deep);
+}
+
+.partial-form {
+  gap: var(--space-2);
+  padding: var(--space-1) 0 var(--space-2);
+}
+
+.maybe {
+  margin-top: var(--space-4);
+  padding: 0 var(--card-padding);
+  background: var(--tag-peach-bg);
+  box-shadow: none;
+}
+
+.maybe-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 56px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tag-peach-ink);
+  font-weight: var(--weight-label);
+  text-align: left;
+}
+
+.maybe-head .grow {
+  flex: 1;
+}
+
+.maybe-head .muted {
+  color: inherit;
+  font-weight: 400;
+}
+
+.maybe-help {
+  margin-bottom: var(--space-1);
+}
+
+.maybe .checklist {
+  padding-bottom: var(--space-2);
+}
+
+.maybe .item-row {
+  border-color: rgba(138, 74, 28, 0.12);
+}
+
+.uncheck-all {
+  margin-top: var(--space-5);
+  color: var(--color-text-muted);
+}
+
+/* ---------- Resumen para Claude ---------- */
+
+.summary {
+  margin: var(--space-4) 0 0;
+  padding: var(--card-padding);
+  overflow-x: auto;
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.week-summary-link {
+  margin-top: var(--space-5);
+  color: var(--color-text-muted);
 }
 
 /* ---------- Campos de texto ---------- */
@@ -695,6 +1195,175 @@ textarea.field {
   font-size: var(--font-size-xs);
 }
 
+/* ---------- Recetas: buscador y filtros ---------- */
+
+.search {
+  position: relative;
+  display: block;
+}
+
+.search .icon {
+  position: absolute;
+  top: 50%;
+  left: var(--space-4);
+  color: var(--color-text-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.search .field {
+  padding-left: 46px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.recipe-filter {
+  flex-wrap: nowrap;
+  margin: var(--space-4) calc(-1 * var(--page-gutter)) 0;
+  padding: 0 var(--page-gutter) 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.recipe-filter::-webkit-scrollbar {
+  display: none;
+}
+
+.recipe-filter .chip {
+  flex-shrink: 0;
+}
+
+.recipe-grid {
+  margin-top: var(--space-5);
+}
+
+.no-results {
+  grid-column: 1 / -1;
+  padding: var(--space-6) 0;
+  text-align: center;
+}
+
+/* ---------- Detalle de receta ---------- */
+
+.recipe-hero {
+  position: relative;
+  margin: calc(-1 * (env(safe-area-inset-top) + var(--space-5))) calc(-1 * var(--page-gutter)) var(--space-5);
+}
+
+.recipe-photo.hero-photo {
+  aspect-ratio: 4 / 3.2;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+}
+
+.hero-photo .recipe-emoji {
+  font-size: 96px;
+}
+
+.hero-back,
+.hero-camera {
+  position: absolute;
+  cursor: pointer;
+}
+
+.hero-back {
+  top: calc(env(safe-area-inset-top) + var(--space-4));
+  left: var(--page-gutter);
+}
+
+.hero-camera {
+  right: var(--page-gutter);
+  bottom: var(--space-4);
+}
+
+.recipe-title {
+  font-size: var(--font-size-xl);
+}
+
+.recipe-sub {
+  margin-top: var(--space-2);
+}
+
+.recipe-macros {
+  margin-top: var(--space-5);
+}
+
+.recipe-macros .macro {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.recipe-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.recipe-info .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.recipe-ingredients {
+  padding: var(--space-4) var(--card-padding);
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.steps li {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.step-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-deep);
+  font-size: var(--font-size-sm);
+  font-weight: var(--weight-label);
+}
+
+.recipe-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.recipe-history ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.recipe-source {
+  margin-top: var(--space-6);
+}
+
+.recipe-photo-actions {
+  margin-top: var(--space-6);
+  gap: var(--space-2);
+}
+
+.recipe-photo-actions label {
+  cursor: pointer;
+}
+
 /* ---------- Hoja que sube desde abajo ---------- */
 
 .sheet-backdrop {
@@ -969,6 +1638,38 @@ textarea.field {
   color: var(--color-text-faint);
   font-size: var(--font-size-sm);
   text-align: center;
+}
+
+/* ---------- Ajustes: respaldo ---------- */
+
+.backup-status {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--eaten-bg);
+  color: var(--eaten-ink);
+  font-size: var(--font-size-sm);
+}
+
+.backup-status.is-warn {
+  background: var(--swapped-bg);
+  color: var(--swapped-ink);
+}
+
+.backup-status .icon {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+
+.list-help {
+  margin: var(--space-2) var(--space-1) 0;
+}
+
+label.list-item {
+  cursor: pointer;
 }
 
 /* ---------- Guía de estilos ---------- */
