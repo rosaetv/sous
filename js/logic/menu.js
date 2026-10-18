@@ -60,3 +60,4 @@ export function formatQty(cantidad, unidad = "") {
   }
   return [formatNumber(cantidad), unit].filter(Boolean).join(" ");
 }
+

@@ -12,6 +12,17 @@ export const MARKS = [
 
 export const SWAP_SUGGESTIONS = ["Nuggets de respaldo", "Sándwich de respaldo", "Comí fuera"];
 
+// Un ingrediente: nombre a la izquierda; cantidad y, debajo, la referencia casera ("¼ de pieza").
+export function ingredientHTML(ing) {
+  const qty = formatQty(ing.cantidad, ing.unidad);
+  const ref = String(ing.ref || "").trim().replace(/^\((.*)\)$/, "$1");
+  return `
+    <li>
+      <span>${esc(ing.nombre)}</span>
+      <span class="qty">${esc(qty || ref)}${qty && ref ? `<span class="qty-ref">${esc(ref)}</span>` : ""}</span>
+    </li>`;
+}
+
 // comida: del menú. mark: la marca guardada (o undefined).
 // open: si una comida ya marcada muestra sus ingredientes (marcadas se pliegan para que lo pendiente destaque).
 export function mealCardHTML(comida, mark, { hasRecipe = false, open = false } = {}) {
@@ -37,7 +48,7 @@ export function mealCardHTML(comida, mark, { hasRecipe = false, open = false } =
           comida.ingredientes.length
             ? `<ul class="meal-ingredients">
                 ${comida.ingredientes
-                  .map((ing) => `<li><span>${esc(ing.nombre)}</span><span class="qty">${esc(formatQty(ing.cantidad, ing.unidad))}</span></li>`)
+                  .map(ingredientHTML)
                   .join("")}
               </ul>`
             : ""

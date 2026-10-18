@@ -2,7 +2,8 @@
 // Las fotos viven solo en el teléfono (IndexedDB), nunca en el código.
 
 import { esc, icon, emptyState, toast, askSheet } from "../ui.js";
-import { CATEGORIAS, formatQty } from "../logic/menu.js";
+import { CATEGORIAS } from "../logic/menu.js";
+import { ingredientHTML } from "../meal-card.js";
 import { resizeToJpeg } from "../lib/imagen.js";
 import { allRecipes, getRecipe, allPhotos, getPhoto, savePhoto, deletePhoto, cacheRecipeImage, recipeHistory } from "../store.js";
 import { shortDay } from "../logic/fechas.js";
@@ -218,7 +219,7 @@ async function renderDetalle(view, id) {
         r.ingredientes.length
           ? `<h2 class="title section-title">Ingredientes</h2>
              <ul class="card meal-ingredients recipe-ingredients">
-               ${r.ingredientes.map((i) => `<li><span>${esc(i.nombre)}</span><span class="qty">${esc(formatQty(i.cantidad, i.unidad))}</span></li>`).join("")}
+               ${r.ingredientes.map(ingredientHTML).join("")}
              </ul>`
           : ""
       }
