@@ -3,6 +3,7 @@
 import { shortDay, rangeLabel } from "./fechas.js";
 import { momentoLabel } from "./menu.js";
 import { itemState } from "./super.js";
+import { swapLabel } from "./cambios.js";
 
 // semana: la semana importada (con intercambios). plans: dayPlan de cada día.
 // marks: lista de marcas de la semana. lista + listChecks (Map id → valor): la lista del súper, si hay.
@@ -24,10 +25,11 @@ export function buildSummary({ semana, plans, marks, lista = null, listChecks = 
       const plato = mark.plato || comida.plato;
       const where = `${shortDay(plan.fecha)} · ${momentoLabel(comida.momento)} · ${plato}`;
       const nota = mark.nota ? ` — "${mark.nota}"` : "";
-      if (mark.estado === "cambiado") cambios.push(`- ${where} → 🔄 ${mark.sustituto || "otra cosa"}${nota}`);
+      if (mark.estado === "cambiado") cambios.push(`- ${where} → 🔄 ${swapLabel(comida, mark)}${nota}`);
       if (mark.estado === "no") cambios.push(`- ${where} → ❌ No${nota}`);
-      // Lo que valoras es lo que comiste: si lo cambiaste, el sustituto.
-      entries.push({ ...mark, comio: mark.estado === "cambiado" ? mark.sustituto || "Otra cosa" : plato, enCambios: mark.estado !== "comido" });
+      // Lo que valoras es lo que comiste: si cambiaste el plato, el nuevo.
+      const nombre = mark.estado === "cambiado" ? mark.comio?.plato || mark.sustituto || "Otra cosa" : plato;
+      entries.push({ ...mark, nombre, enCambios: mark.estado !== "comido" });
     }
   }
   const sinMarcar = total - count.comido - count.cambiado - count.no;
@@ -59,7 +61,7 @@ export function buildSummary({ semana, plans, marks, lista = null, listChecks = 
   section(
     lines,
     "Notas",
-    entries.filter((e) => e.nota && !e.valoracion && !e.enCambios).map((e) => `- ${e.comio} — "${e.nota}"`),
+    entries.filter((e) => e.nota && !e.valoracion && !e.enCambios).map((e) => `- ${e.nombre} — "${e.nota}"`),
   );
 
   // ---------- Súper ----------
@@ -89,10 +91,10 @@ function section(lines, title, items) {
 function grouped(entries) {
   const groups = new Map();
   for (const e of entries) {
-    const g = groups.get(e.comio) || { n: 0, notas: [] };
+    const g = groups.get(e.nombre) || { n: 0, notas: [] };
     g.n++;
     if (e.nota) g.notas.push(`"${e.nota}"`);
-    groups.set(e.comio, g);
+    groups.set(e.nombre, g);
   }
   return [...groups].map(([name, g]) => `- ${name}${g.n > 1 ? ` (${g.n} veces)` : ""}${g.notas.length ? ` — ${g.notas.join("; ")}` : ""}`);
 }

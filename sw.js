@@ -6,7 +6,7 @@
 //   (python3 dev/revisar-sw.py avisa si falta alguno).
 // - Tus datos (menús, marcas, recetas, fotos) no van aquí: viven en IndexedDB.
 
-const VERSION = "1.4.1"; // la reemplaza dev/publicar.py
+const VERSION = "1.5.0"; // la reemplaza dev/publicar.py
 const CACHE = `sous-${VERSION}`;
 const PHOTO_CACHE = "sous-fotos"; // fotos de recetas de otros sitios (imagenUrl): no cambia con cada versión
 
@@ -23,8 +23,11 @@ const FILES = [
   "icons/icon.svg",
   "js/app.js",
   "js/backup.js",
+  "js/batch-card.js",
   "js/db.js",
   "js/lib/imagen.js",
+  "js/logic/batch.js",
+  "js/logic/cambios.js",
   "js/logic/fechas.js",
   "js/logic/menu.js",
   "js/logic/resumen.js",

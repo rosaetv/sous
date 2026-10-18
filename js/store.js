@@ -139,7 +139,7 @@ export async function marksBetween(inicio, fin) {
 
 // Marca una comida. Guarda también el plato del menú, para que el resumen
 // siga siendo correcto aunque después cambie el menú o intercambies días.
-export async function setMark(fecha, comida, { estado, sustituto = "" }) {
+export async function setMark(fecha, comida, { estado, sustituto = "", comio = null }) {
   const clave = `${fecha}|${comida.momento}`;
   const previous = await db.get("marcas", clave);
   const mark = {
@@ -149,6 +149,8 @@ export async function setMark(fecha, comida, { estado, sustituto = "" }) {
     momento: comida.momento,
     estado,
     sustituto: estado === "cambiado" ? sustituto : "",
+    // Lo que de verdad comiste ({ plato, ingredientes }), si lo editaste al marcar "Cambiado".
+    comio: estado === "cambiado" ? comio : null,
     plato: comida.plato,
     recetaId: comida.recetaId,
     marcadoEn: now(),
@@ -188,6 +190,11 @@ export async function swapDays(inicio, a, b) {
 
 export async function recipeIds() {
   return new Set(await db.getAllKeys("recetas"));
+}
+
+// Map de id → receta (para enlazar los pasos del batch con su receta y tiempo).
+export async function recipesById() {
+  return new Map((await db.getAll("recetas")).map((r) => [r.id, r]));
 }
 
 // ---------- Semanas ----------

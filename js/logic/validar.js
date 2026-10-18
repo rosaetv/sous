@@ -110,6 +110,13 @@ function macros(value, where, ctx) {
   return out;
 }
 
+// Un paso del batch: texto ("Cocer arroz") o { texto, recetaId }. Siempre sale como { texto, recetaId|null }.
+// También sirve para las semanas guardadas antes de 1.5.0, que tienen los pasos como texto.
+export function pasoBatch(p) {
+  if (p && typeof p === "object") return { texto: text(p.texto), recetaId: isText(p.recetaId) ? text(p.recetaId) : null };
+  return { texto: text(p), recetaId: null };
+}
+
 // La cantidad puede venir como número (2) o como texto ("al gusto").
 function cantidad(value) {
   if (value == null || value === "") return null;
@@ -221,7 +228,17 @@ function validarMenu(obj, ctx) {
 
   const batch = list(obj.batch, "batch", ctx).flatMap((b, i) => {
     if (!b || typeof b !== "object") return [];
-    const pasos = textList(b.pasos, `batch ${i + 1}: pasos`, ctx);
+    const pasos = list(b.pasos, `batch ${i + 1}: pasos`, ctx).flatMap((p, j) => {
+      const where = `batch ${i + 1}, paso ${j + 1}`;
+      if (p && typeof p === "object" && !Array.isArray(p)) {
+        if (!isText(p.texto)) {
+          ctx.errores.push(`${where}: falta el texto del paso.`);
+          return [];
+        }
+        return [{ texto: text(p.texto), recetaId: isText(p.recetaId) ? text(p.recetaId) : null }];
+      }
+      return p == null || text(p) === "" ? [] : [pasoBatch(p)];
+    });
     if (!pasos.length) return [];
     return [{ cuando: text(b.cuando), pasos }];
   });

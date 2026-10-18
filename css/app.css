@@ -303,31 +303,56 @@ ul {
   font-weight: var(--weight-label);
 }
 
-.tags + .day-notes,
 .tags + .day-progress {
   margin-top: var(--space-4);
 }
 
-/* Notas fijas del día */
+/* Notas fijas del día: plegadas en una línea */
+.day-notes-box {
+  margin-bottom: var(--space-4);
+}
+
+.tags + .day-notes-box {
+  margin-top: var(--space-3);
+}
+
+.notes-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-align: left;
+}
+
+.notes-toggle .grow {
+  flex: 1;
+}
+
+.notes-toggle .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--color-accent);
+}
+
+.notes-toggle .chevron {
+  color: var(--color-text-faint);
+}
+
 .day-notes {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  margin: var(--space-1) 0 0 24px;
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
-}
-
-.day-notes li {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.day-notes .icon {
-  width: 16px;
-  height: 16px;
-  margin-top: 3px;
-  color: var(--color-accent);
+  list-style: disc;
+  animation: fade-in var(--transition-soft);
 }
 
 .day-macros {
@@ -626,23 +651,108 @@ ul {
 
 /* ---------- Checklist (batch y súper) ---------- */
 
+.batches {
+  margin-top: var(--space-5);
+  gap: var(--space-3);
+}
+
 .batch {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  padding-top: var(--space-3);
 }
 
-.batch-when {
+.batch-head {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
 }
 
-.batch-when .icon {
-  width: 16px;
-  height: 16px;
+.batch-head-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.batch-title {
+  font-weight: var(--weight-title);
+}
+
+.batch-head .chevron {
+  color: var(--color-text-faint);
+}
+
+.batch-bar {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-decor);
+  overflow: hidden;
+}
+
+.batch-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent);
+  transition: width var(--transition-soft);
+}
+
+/* Paso con receta: la casilla palomea y el texto abre la receta */
+.batch-step {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.checklist .batch-step:last-child {
+  border-bottom: 0;
+}
+
+/* 48 px para tocar, pero el texto queda alineado con el de los pasos sin receta */
+.check-row.check-only {
+  width: auto;
+  min-width: 48px;
+  margin-left: -8px;
+  padding-left: 8px;
+  border-bottom: 0;
+}
+
+.batch-step-link {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: 12px 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.batch-step-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.batch-step-text .is-done {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.batch-step-link .chevron {
+  flex-shrink: 0;
+  color: var(--color-text-faint);
 }
 
 .check-row {
@@ -689,7 +799,7 @@ ul {
   animation: pop var(--transition-pop);
 }
 
-.check-row[aria-pressed="true"] > span:last-child:not(.item-text) {
+.check-row[aria-pressed="true"] > span:last-child:not(.item-text, .checkbox) {
   color: var(--color-text-muted);
   text-decoration: line-through;
 }
@@ -1053,6 +1163,68 @@ textarea.field {
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   font-style: italic;
+}
+
+/* Ingredientes de lo que comiste, frente al menú */
+.meal-ingredients .is-removed > span:first-child {
+  color: var(--color-text-faint);
+  text-decoration: line-through;
+}
+
+.meal-ingredients .is-changed .qty,
+.meal-ingredients .is-added {
+  color: var(--swapped-ink);
+}
+
+/* Hoja "¿Qué comiste?": el menú de la comida, editable */
+.swap-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.field-label {
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.edit-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.edit-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.edit-row .field {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 48px;
+  padding: var(--space-2) var(--space-3);
+}
+
+.edit-row .qty-input {
+  flex: 0 0 30%;
+}
+
+.edit-row .icon-btn {
+  flex-shrink: 0;
+}
+
+.add-row {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+}
+
+.swap-editor .btn-primary {
+  margin-top: var(--space-3);
 }
 
 /* ---------- Botones de marcado: Comido / Cambiado / No ---------- */

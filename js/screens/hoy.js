@@ -3,9 +3,12 @@
 import { esc, icon, emptyState, openSheet, toast } from "../ui.js";
 import { todayISO, fromISO, shortDay, addDays } from "../logic/fechas.js";
 import { notasDeHoy } from "../logic/menu.js";
-import { mealCardHTML, tagsHTML, SWAP_SUGGESTIONS } from "../meal-card.js";
-import { weekFor, dayPlan, marksFor, setMark, clearMark, updateMark, swapDays, recipeIds } from "../store.js";
+import { mealCardHTML, tagsHTML } from "../meal-card.js";
+import { editableFrom, diffMeal, hasChanges } from "../logic/cambios.js";
+import { weekFor, dayPlan, marksFor, setMark, clearMark, updateMark, swapDays, recipeIds, recipesById, checksWithPrefix } from "../store.js";
 import { swapTargets, chooseAndSwap } from "../swap-day.js";
+import { batchCardHTML, toggleBatchCheck } from "../batch-card.js";
+import { fechaDelBatch } from "../logic/batch.js";
 
 function longDate(fecha) {
   const text = fromISO(fecha).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" });
@@ -24,6 +27,27 @@ function header(fecha, isToday) {
       <a class="icon-btn" href="${href(addDays(fecha, -1))}" aria-label="Día anterior">${icon("chevron-left")}</a>
       <a class="icon-btn" href="${href(addDays(fecha, 1))}" aria-label="Día siguiente">${icon("chevron-right")}</a>
     </div>`;
+}
+
+// Notas fijas plegadas por defecto: una línea ("3 notas para hoy") que se abre al tocarla.
+// Se recuerda si la dejaste abierta (solo en este teléfono).
+const NOTES_KEY = "sous-notas-abiertas";
+function notesOpen() {
+  try {
+    return localStorage.getItem(NOTES_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function notesHTML(notas) {
+  const open = notesOpen();
+  return `
+    <button class="notes-toggle" data-action="notes" aria-expanded="${open}">
+      ${icon("pin")}<span class="grow">${notas.length === 1 ? "1 nota para hoy" : `${notas.length} notas para hoy`}</span>
+      ${icon(open ? "chevron-up" : "chevron-down", "icon chevron")}
+    </button>
+    ${open ? `<ul class="day-notes">${notas.map((n) => `<li><span>${esc(n)}</span></li>`).join("")}</ul>` : ""}`;
 }
 
 function progressHTML(comidas, marks) {
@@ -72,6 +96,12 @@ export async function renderHoy(view, fechaParam) {
 
   const swapOptions = swapTargets(semana, fecha, today);
 
+  // El batch que toca este día (si "cuando" nombra el día de la semana), arriba de las comidas.
+  const batchHoy = semana.batch.map((b, i) => i).filter((i) => fechaDelBatch(semana.batch[i].cuando, semana.inicio, semana.fin) === fecha);
+  const [batchChecks, recetasMap] = batchHoy.length
+    ? await Promise.all([checksWithPrefix(`${semana.inicio}|batch|`), recipesById()])
+    : [new Set(), new Map()];
+
   const card = (comida) =>
     mealCardHTML(comida, marks[comida.momento], { hasRecipe: comida.recetaId && recetas.has(comida.recetaId), open: open.has(comida.momento) });
 
@@ -84,9 +114,10 @@ export async function renderHoy(view, fechaParam) {
         : ""
     }
     ${tagsHTML(plan.etiquetas)}
-    ${notas.length ? `<ul class="day-notes">${notas.map((n) => `<li>${icon("pin")}<span>${esc(n)}</span></li>`).join("")}</ul>` : ""}
+    ${notas.length ? `<section class="day-notes-box">${notesHTML(notas)}</section>` : ""}
     <div class="day-progress">${progressHTML(plan.comidas, marks)}</div>
     ${macrosLine(plan.macros)}
+    ${batchHoy.length ? `<div class="stack batches">${batchHoy.map((i) => batchCardHTML({ semana, i, checks: batchChecks, recetas: recetasMap })).join("")}</div>` : ""}
     <div class="stack meals">${plan.comidas.map(card).join("")}</div>
     ${
       swapOptions.length
@@ -105,39 +136,65 @@ export async function renderHoy(view, fechaParam) {
     }
   }
 
-  async function mark(comida, estado, sustituto = "") {
+  async function mark(comida, estado, { sustituto = "", comio = null } = {}) {
     // Se ve al instante; se guarda justo después.
-    marks[comida.momento] = { ...marks[comida.momento], estado, sustituto };
+    marks[comida.momento] = { ...marks[comida.momento], estado, sustituto, comio };
     open.delete(comida.momento);
     refresh(comida.momento, { animate: true });
-    marks[comida.momento] = await setMark(fecha, comida, { estado, sustituto });
+    marks[comida.momento] = await setMark(fecha, comida, { estado, sustituto, comio });
   }
 
-  function askWhatYouAte(comida) {
+  // "Cambiado": el menú de esa comida, editable. Quitas, agregas o cambias cantidades y guardas.
+  function editWhatYouAte(comida) {
+    const start = marks[comida.momento]?.comio || editableFrom(comida);
+    const row = (ing = { nombre: "", cantidad: "" }) => `
+      <li class="edit-row">
+        <input class="field" name="nombre" value="${esc(ing.nombre)}" placeholder="Ingrediente" autocomplete="off" enterkeyhint="next" />
+        <input class="field qty-input" name="cantidad" value="${esc(ing.cantidad)}" placeholder="Cantidad" autocomplete="off" enterkeyhint="done" />
+        <button type="button" class="icon-btn plain" data-remove aria-label="Quitar">${icon("x")}</button>
+      </li>`;
+
     const { sheet, close } = openSheet(
       `
       <h2 class="title sheet-title">¿Qué comiste?</h2>
-      <p class="muted" style="margin-top: 4px">En lugar de ${esc(comida.plato)}</p>
-      <div class="chips" style="margin-top: 20px">
-        ${SWAP_SUGGESTIONS.map((s) => `<button class="chip" data-suggestion="${esc(s)}">${esc(s)}</button>`).join("")}
-      </div>
-      <form class="stack" style="margin-top: 16px; gap: 8px">
-        <input class="field" name="what" placeholder="O escríbelo aquí" autocomplete="off" enterkeyhint="done" />
+      <p class="muted" style="margin-top: 4px">Cambia lo que haga falta; lo demás queda como en el menú.</p>
+      <form class="swap-editor">
+        <label class="field-label" for="swap-plato">Plato</label>
+        <input class="field" id="swap-plato" name="plato" value="${esc(start.plato)}" autocomplete="off" />
+        <p class="field-label">Ingredientes</p>
+        <ul class="edit-rows">${start.ingredientes.map(row).join("")}</ul>
+        <button type="button" class="btn btn-ghost add-row" data-add>${icon("plus")} Agregar ingrediente</button>
         <button class="btn btn-primary btn-block">Guardar</button>
       </form>`,
       { label: "Qué comiste" },
     );
-    const save = (text) => {
-      close();
-      mark(comida, "cambiado", text.trim());
-    };
+    const form = sheet.querySelector("form");
+    const list = sheet.querySelector(".edit-rows");
+
     sheet.addEventListener("click", (e) => {
-      const s = e.target.closest("[data-suggestion]")?.dataset.suggestion;
-      if (s) save(s); // una sugerencia guarda con un solo toque
+      if (e.target.closest("[data-remove]")) e.target.closest(".edit-row").remove();
+      if (e.target.closest("[data-add]")) {
+        list.insertAdjacentHTML("beforeend", row());
+        list.lastElementChild.querySelector("input").focus();
+      }
     });
-    sheet.querySelector("form").addEventListener("submit", (e) => {
+
+    form.addEventListener("submit", (e) => {
       e.preventDefault();
-      save(e.target.what.value);
+      const comio = {
+        plato: form.plato.value.trim() || comida.plato,
+        ingredientes: [...list.querySelectorAll(".edit-row")]
+          .map((li) => ({ nombre: li.querySelector("[name=nombre]").value.trim(), cantidad: li.querySelector("[name=cantidad]").value.trim() }))
+          .filter((i) => i.nombre),
+      };
+      close();
+      if (!hasChanges(diffMeal(comida, comio))) {
+        // Sin cambios: fue tal cual el menú.
+        mark(comida, "comido");
+        toast("Sin cambios: lo marqué como comido");
+        return;
+      }
+      mark(comida, "cambiado", { sustituto: comio.plato, comio });
     });
   }
 
@@ -166,6 +223,7 @@ export async function renderHoy(view, fechaParam) {
   }
 
   view.onclick = async (event) => {
+    if (await toggleBatchCheck(event, semana, batchChecks)) return;
     const cardEl = event.target.closest(".meal");
     const comida = cardEl && plan.comidas.find((c) => c.momento === cardEl.dataset.momento);
     const markBtn = event.target.closest("[data-mark]");
@@ -180,7 +238,7 @@ export async function renderHoy(view, fechaParam) {
         refresh(comida.momento);
         await clearMark(fecha, comida.momento);
       } else if (estado === "cambiado") {
-        askWhatYouAte(comida);
+        editWhatYouAte(comida);
       } else {
         mark(comida, estado);
       }
@@ -196,6 +254,7 @@ export async function renderHoy(view, fechaParam) {
     }
 
     if (comida && action === "note") return askNote(comida);
+    if (comida && action === "edit-swap") return editWhatYouAte(comida);
 
     if (comida && action === "toggle") {
       open.has(comida.momento) ? open.delete(comida.momento) : open.add(comida.momento);
@@ -203,7 +262,17 @@ export async function renderHoy(view, fechaParam) {
       return;
     }
 
-    if (action === "swap-day") return chooseDay();
+    if (action === "notes") {
+      try {
+        localStorage.setItem(NOTES_KEY, notesOpen() ? "0" : "1");
+      } catch {
+        // sin almacenamiento: se abre igual, solo no se recuerda
+      }
+      view.querySelector(".day-notes-box").innerHTML = notesHTML(notas);
+      return;
+    }
+
+        if (action === "swap-day") return chooseDay();
 
     if (action === "undo-swap") {
       await swapDays(semana.inicio, fecha, plan.origen);
