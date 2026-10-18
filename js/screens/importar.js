@@ -10,7 +10,15 @@ const MAX_ERRORS = 5;
 
 function describe(result) {
   const d = result.datos;
-  if (result.tipo === "menu") return { emoji: "🗓️", text: `Menú semanal · ${rangeLabel(d.inicio, d.fin)} · ${d.dias.length} días` };
+  if (result.tipo === "menu") {
+    const pasos = d.batch.reduce((n, b) => n + b.pasos.length, 0);
+    const macros = [...new Set(d.dias.flatMap((dia) => Object.keys(dia.macros || {})))];
+    return {
+      emoji: "🗓️",
+      text: `Menú semanal · ${rangeLabel(d.inicio, d.fin)} · ${d.dias.length} días`,
+      detail: [pasos ? `Mealprep: ${pasos} pasos` : "Sin mealprep", macros.length ? `Macros: ${macros.join(", ")}` : "Sin macros"].join(" · "),
+    };
+  }
   if (result.tipo === "lista") return { emoji: "🧺", text: `Lista del súper · ${d.items.length} artículos` };
   return { emoji: "📖", text: `Recetario · ${d.recetas.length} recetas` };
 }
@@ -31,13 +39,13 @@ function statusHTML(result) {
         <button class="btn btn-secondary btn-block" data-action="copy-errors">${icon("copy")} Copiar errores para Claude</button>
       </section>`;
   }
-  const { emoji, text } = describe(result);
+  const { emoji, text, detail = "" } = describe(result);
   return `
     <section class="card import-ok">
       <span class="import-emoji" aria-hidden="true">${emoji}</span>
       <div>
         <p class="title">${esc(text)}</p>
-        <p class="small muted">Listo para importar</p>
+        <p class="small muted">${detail ? `${esc(detail)}<br>` : ""}Listo para importar</p>
       </div>
     </section>
     ${result.avisos.map((a) => `<p class="import-warning">${icon("info")}<span>${esc(a)}</span></p>`).join("")}`;

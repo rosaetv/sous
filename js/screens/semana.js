@@ -5,7 +5,7 @@
 
 import { esc, icon, emptyState, toast } from "../ui.js";
 import { todayISO, shortDay, rangeLabel } from "../logic/fechas.js";
-import { momentoLabel, etiquetaInfo } from "../logic/menu.js";
+import { momentoLabel, etiquetaInfo, MACROS_PANTALLA } from "../logic/menu.js";
 import { allWeeks, defaultWeek, dayPlan, marksBetween, checksWithPrefix, swapDays, recipesById } from "../store.js";
 import { swapTargets, chooseAndSwap } from "../swap-day.js";
 import { swapLabel } from "../logic/cambios.js";
@@ -13,13 +13,7 @@ import { batchCardHTML, toggleBatchCheck } from "../batch-card.js";
 import { progresoBatch, fechaDelBatch } from "../logic/batch.js";
 
 const STATE_ICON = { comido: "check", cambiado: "refresh-cw", no: "x" };
-const MACROS = [
-  ["kcal", "kcal"],
-  ["prot", "prot"],
-  ["carb", "carb"],
-  ["grasa", "grasa"],
-  ["fibra", "fibra"],
-];
+const MACROS = MACROS_PANTALLA;
 
 function dot(estado) {
   return `<span class="dot" data-state="${estado || ""}">${estado ? icon(STATE_ICON[estado]) : ""}</span>`;

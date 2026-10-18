@@ -3,7 +3,7 @@
 // o una lista de errores claros en español. Nunca guarda nada: eso lo hace store.js.
 
 import { isISODate, datesBetween, shortDay } from "./fechas.js";
-import { MOMENTOS, CATEGORIAS } from "./menu.js";
+import { MOMENTOS, CATEGORIAS, toMomento, toCategoria } from "./menu.js";
 
 const TIPOS = ["menu", "lista", "recetario"];
 const MACROS = ["kcal", "prot", "carb", "grasa", "fibra"];
@@ -46,11 +46,13 @@ export function validar(obj) {
     return { ok: false, errores: [`No reconozco el tipo "${obj.tipo}". Debe ser "menu", "lista" o "recetario".`] };
   }
 
-  const ctx = { errores: [], avisos: [] };
+  const ctx = { errores: [], avisos: [], ignorados: new Set() };
   const datos =
     obj.tipo === "menu" ? validarMenu(obj, ctx) : obj.tipo === "lista" ? validarLista(obj, ctx) : validarRecetario(obj, ctx);
 
   if (ctx.errores.length) return { ok: false, tipo: obj.tipo, errores: ctx.errores };
+  // Lo que no reconozco no se importa: lo digo para que no desaparezca sin avisar.
+  if (ctx.ignorados.size) ctx.avisos.push(`No reconozco estos campos y no se importaron: ${[...ctx.ignorados].join("; ")}.`);
   return { ok: true, tipo: obj.tipo, datos, avisos: ctx.avisos };
 }
 
@@ -86,14 +88,51 @@ function list(value, where, ctx, { required = false } = {}) {
   return value;
 }
 
+// Acepta 105, "105", "105 g", "1.400 kcal" o "27,5".
 function number(value, where, ctx) {
   if (value == null || value === "") return null;
-  const n = typeof value === "string" ? Number(value.replace(",", ".")) : value;
+  let n = value;
+  if (typeof value === "string") {
+    let clean = value.replace(/[^0-9.,-]/g, "");
+    if (/^\d{1,3}(\.\d{3})+$/.test(clean)) clean = clean.replace(/\./g, ""); // 1.400 = mil cuatrocientos
+    n = clean === "" ? NaN : Number(clean.replace(",", "."));
+  }
   if (typeof n !== "number" || Number.isNaN(n)) {
     ctx.errores.push(`${where} debe ser un número (está como "${value}").`);
     return null;
   }
   return n;
+}
+
+// Nombres que Claude a veces usa en lugar de los del formato (se comparan sin acentos ni mayúsculas).
+const MACRO_NAMES = {
+  // Primero el nombre que usa Health (el que pedimos a Claude).
+  kcal: ["kcal", "calorias", "cal", "energia", "kilocalorias"],
+  prot: ["proteina", "prot", "proteinas", "protein"],
+  carb: ["carbohidratos", "carb", "carbs", "hidratos", "hc", "carbohidrato"],
+  grasa: ["grasas", "grasa", "lipidos", "fat"],
+  fibra: ["fibra", "fiber"],
+};
+
+const keyNorm = (k) =>
+  String(k)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z]/g, "");
+
+// El valor del primer nombre que exista en obj (por ejemplo "proteina" para prot).
+export function pick(obj, names) {
+  if (!obj || typeof obj !== "object") return undefined;
+  const wanted = new Set(names.map(keyNorm));
+  const key = Object.keys(obj).find((k) => wanted.has(keyNorm(k)));
+  return key === undefined ? undefined : obj[key];
+}
+
+// Los campos de obj que no son ninguno de los nombres conocidos.
+function unknownKeys(obj, known) {
+  const all = new Set(known.flat().map(keyNorm));
+  return Object.keys(obj).filter((k) => !all.has(keyNorm(k)));
 }
 
 function macros(value, where, ctx) {
@@ -104,16 +143,25 @@ function macros(value, where, ctx) {
   }
   const out = {};
   for (const key of MACROS) {
-    const n = number(value[key], `${where}: macros.${key}`, ctx);
+    const n = number(pick(value, MACRO_NAMES[key]), `${where}: macros.${MACRO_NAMES[key][0]}`, ctx);
     if (n != null) out[key] = n;
   }
+  const extra = unknownKeys(value, Object.values(MACRO_NAMES));
+  if (extra.length) ctx.ignorados.add(`macros: ${extra.join(", ")}`);
   return out;
 }
 
 // Un paso del batch: texto ("Cocer arroz") o { texto, recetaId }. Siempre sale como { texto, recetaId|null }.
 // También sirve para las semanas guardadas antes de 1.5.0, que tienen los pasos como texto.
+const BATCH_NAMES = ["batch", "mealprep", "meal_prep", "preparacion", "prep", "batchcooking", "batchdomingo"];
+const PASO_TEXTO = ["texto", "paso", "descripcion", "tarea", "accion", "nombre"];
+const PASO_RECETA = ["recetaId", "receta", "receta_id", "modulo"];
+
 export function pasoBatch(p) {
-  if (p && typeof p === "object") return { texto: text(p.texto), recetaId: isText(p.recetaId) ? text(p.recetaId) : null };
+  if (p && typeof p === "object") {
+    const recetaId = pick(p, PASO_RECETA);
+    return { texto: text(pick(p, PASO_TEXTO)), recetaId: isText(recetaId) ? text(recetaId) : null };
+  }
   return { texto: text(p), recetaId: null };
 }
 
@@ -186,23 +234,24 @@ function validarMenu(obj, ctx) {
     const momentos = new Set();
     const comidas = list(dia.comidas, `${where}: comidas`, ctx, { required: true }).flatMap((c, j) => {
       const whereC = `${where}, comida ${j + 1}`;
-      if (!c || !orden.includes(c.momento)) {
-        const opciones = orden.join(", ");
+      const momento = c && toMomento(c.momento);
+      if (!momento) {
+        const opciones = MOMENTOS.map((m) => m.json).join(", ");
         ctx.errores.push(`${whereC}: momento debe ser uno de: ${opciones}${c?.momento ? ` (está como "${c.momento}")` : ""}.`);
         return [];
       }
-      if (momentos.has(c.momento)) {
+      if (momentos.has(momento)) {
         ctx.errores.push(`${where}: el momento "${c.momento}" aparece dos veces.`);
         return [];
       }
-      momentos.add(c.momento);
+      momentos.add(momento);
       if (!isText(c.plato)) {
         ctx.errores.push(`${whereC} (${c.momento}): falta el campo plato.`);
         return [];
       }
       return [
         {
-          momento: c.momento,
+          momento,
           plato: text(c.plato),
           recetaId: isText(c.recetaId) ? text(c.recetaId) : null,
           ingredientes: ingredientes(c.ingredientes, `${whereC} (${c.momento})`, ctx),
@@ -226,22 +275,31 @@ function validarMenu(obj, ctx) {
   const faltan = datesBetween(inicio, fin).filter((d) => !vistas.has(d));
   if (dias.length && faltan.length) ctx.avisos.push(`No hay menú para: ${faltan.map(shortDay).join(", ")}.`);
 
-  const batch = list(obj.batch, "batch", ctx).flatMap((b, i) => {
+  // El mealprep puede venir como "batch", "mealprep"…, como lista de bloques, un solo bloque o solo pasos.
+  let rawBatch = pick(obj, BATCH_NAMES);
+  if (rawBatch && !Array.isArray(rawBatch) && typeof rawBatch === "object") rawBatch = [rawBatch];
+  if (Array.isArray(rawBatch) && rawBatch.length && rawBatch.every((b) => typeof b === "string")) rawBatch = [{ pasos: rawBatch }];
+  const batch = list(rawBatch, "batch", ctx).flatMap((b, i) => {
     if (!b || typeof b !== "object") return [];
-    const pasos = list(b.pasos, `batch ${i + 1}: pasos`, ctx).flatMap((p, j) => {
+    const pasos = list(pick(b, ["pasos", "steps", "tareas", "instrucciones", "items"]), `batch ${i + 1}: pasos`, ctx).flatMap((p, j) => {
       const where = `batch ${i + 1}, paso ${j + 1}`;
       if (p && typeof p === "object" && !Array.isArray(p)) {
-        if (!isText(p.texto)) {
+        const paso = pasoBatch(p);
+        if (!paso.texto) {
           ctx.errores.push(`${where}: falta el texto del paso.`);
           return [];
         }
-        return [{ texto: text(p.texto), recetaId: isText(p.recetaId) ? text(p.recetaId) : null }];
+        return [paso];
       }
       return p == null || text(p) === "" ? [] : [pasoBatch(p)];
     });
     if (!pasos.length) return [];
-    return [{ cuando: text(b.cuando), pasos }];
+    return [{ cuando: text(pick(b, ["cuando", "dia", "day", "when", "momento"])), pasos }];
   });
+  if (!batch.length) ctx.avisos.push("Este menú no trae mealprep (falta el campo batch).");
+
+  const extra = unknownKeys(obj, ["tipo", "semana", "notasFijas", "dias", BATCH_NAMES]);
+  if (extra.length) ctx.ignorados.add(extra.join(", "));
 
   return {
     tipo: "menu",
@@ -300,7 +358,6 @@ function validarRecetario(obj, ctx) {
   const rawRecetas = list(obj.recetas, "recetas", ctx, { required: true });
   if (Array.isArray(obj.recetas) && rawRecetas.length === 0) ctx.errores.push("La lista recetas está vacía.");
 
-  const categorias = CATEGORIAS.map((c) => c.id);
   const ids = new Set();
   const recetas = rawRecetas.flatMap((r, i) => {
     if (!r || !isText(r.id)) {
@@ -314,15 +371,16 @@ function validarRecetario(obj, ctx) {
     }
     ids.add(r.id);
     if (!isText(r.nombre)) ctx.errores.push(`${where}: falta el campo nombre.`);
-    if (!categorias.includes(r.categoria)) {
-      ctx.errores.push(`${where}: categoria debe ser una de: ${categorias.join(", ")}${r.categoria ? ` (está como "${r.categoria}")` : ""}.`);
+    const categoria = toCategoria(r.categoria);
+    if (!categoria) {
+      ctx.errores.push(`${where}: categoria debe ser una de: ${CATEGORIAS.map((c) => c.id).join(", ")}${r.categoria ? ` (está como "${r.categoria}")` : ""}.`);
     }
     const aparato = typeof r.aparato === "string" ? [r.aparato] : textList(r.aparato, `${where}: aparato`, ctx);
     return [
       {
         id: text(r.id),
         nombre: text(r.nombre),
-        categoria: r.categoria,
+        categoria,
         emoji: text(r.emoji),
         macros: macros(r.macros, where, ctx),
         tiempoActivoMin: number(r.tiempoActivoMin, `${where}: tiempoActivoMin`, ctx),

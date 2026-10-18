@@ -1,20 +1,48 @@
-// Vocabulario fijo de los JSON que genera Claude.
+// Vocabulario fijo de los JSON que genera Claude, con los mismos nombres que usa el proyecto Health.
+// id: cómo se guarda en el teléfono (no cambiarlo: las marcas ya guardadas lo usan).
+// json: el nombre que pedimos a Claude. alias: otras formas que también se aceptan.
 
 export const MOMENTOS = [
-  { id: "desayuno", label: "Desayuno" },
-  { id: "colacion-manana", label: "Colación mañana" },
-  { id: "comida", label: "Comida" },
-  { id: "colacion-tarde", label: "Colación tarde" },
-  { id: "cena", label: "Cena" },
+  { id: "desayuno", json: "desayuno", label: "Desayuno", alias: [] },
+  { id: "colacion-manana", json: "colacion-matutina", label: "Colación matutina", alias: ["colacion-manana", "colacion am"] },
+  { id: "comida", json: "comida", label: "Comida", alias: [] },
+  { id: "colacion-tarde", json: "colacion-vespertina", label: "Colación vespertina", alias: ["colacion-tarde", "colacion pm", "merienda"] },
+  { id: "cena", json: "cena", label: "Cena", alias: [] },
 ];
 
 export const CATEGORIAS = [
-  { id: "comida", label: "Comida" },
-  { id: "desayuno", label: "Desayuno" },
-  { id: "colacion", label: "Colación" },
-  { id: "modulo", label: "Módulo" },
-  { id: "sazon", label: "Sazón" },
+  { id: "comida", label: "Comidas y cenas", alias: ["comidas", "comidas y cenas", "cena", "cenas"] },
+  { id: "desayuno", label: "Desayunos", alias: ["desayunos"] },
+  { id: "colacion", label: "Colaciones", alias: ["colaciones", "colaciones grab and go", "snack"] },
+  { id: "modulo", label: "Módulos", alias: ["modulos", "modulos base"] },
+  { id: "sazon", label: "Sazones", alias: ["sazones"] },
 ];
+
+// Macros en pantalla, con los nombres de Health (la clave es cómo se guardan).
+export const MACROS_PANTALLA = [
+  ["kcal", "kcal"],
+  ["prot", "proteína"],
+  ["carb", "carbohid."],
+  ["grasa", "grasas"],
+  ["fibra", "fibra"],
+];
+
+// Para comparar sin acentos, mayúsculas, guiones ni espacios: "Colación matutina" = "colacion-matutina".
+const flat = (s) =>
+  String(s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z]/g, "");
+
+function find(list, value) {
+  const v = flat(value);
+  if (!v) return null;
+  return list.find((x) => [x.id, x.json, x.label, ...x.alias].filter(Boolean).some((n) => flat(n) === v))?.id || null;
+}
+
+export const toMomento = (value) => find(MOMENTOS, value);
+export const toCategoria = (value) => find(CATEGORIAS, value);
 
 export const momentoLabel = (id) => MOMENTOS.find((m) => m.id === id)?.label || id;
 

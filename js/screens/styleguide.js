@@ -41,7 +41,7 @@ function recipeCard(r) {
       <div class="recipe-photo" data-cat="${r.cat}"><span class="recipe-emoji" aria-hidden="true">${r.emoji}</span></div>
       <div class="recipe-body">
         <p class="title recipe-name">${esc(r.name)}</p>
-        <p class="recipe-meta">${r.kcal} kcal · ${r.prot} g prot</p>
+        <p class="recipe-meta">${r.kcal} kcal · ${r.prot} g proteína</p>
         <p class="recipe-meta">${tags}</p>
       </div>
     </a>`;

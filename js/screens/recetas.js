@@ -2,7 +2,7 @@
 // Las fotos viven solo en el teléfono (IndexedDB), nunca en el código.
 
 import { esc, icon, emptyState, toast, askSheet } from "../ui.js";
-import { CATEGORIAS } from "../logic/menu.js";
+import { CATEGORIAS, MACROS_PANTALLA } from "../logic/menu.js";
 import { ingredientHTML } from "../meal-card.js";
 import { resizeToJpeg } from "../lib/imagen.js";
 import { allRecipes, getRecipe, allPhotos, getPhoto, savePhoto, deletePhoto, cacheRecipeImage, recipeHistory } from "../store.js";
@@ -39,7 +39,7 @@ function tagsLine(r) {
 
 function macrosLine(r) {
   if (!r.macros) return "";
-  return [r.macros.kcal != null && `${r.macros.kcal} kcal`, r.macros.prot != null && `${r.macros.prot} g prot`].filter(Boolean).join(" · ");
+  return [r.macros.kcal != null && `${r.macros.kcal} kcal`, r.macros.prot != null && `${r.macros.prot} g proteína`].filter(Boolean).join(" · ");
 }
 
 // URLs temporales de las fotos guardadas; se liberan al salir de la pantalla.
@@ -205,7 +205,7 @@ async function renderDetalle(view, id) {
       ${
         r.macros
           ? `<div class="macros recipe-macros">
-              ${[["kcal", "kcal"], ["prot", "prot"], ["carb", "carb"], ["grasa", "grasa"], ["fibra", "fibra"]]
+              ${MACROS_PANTALLA
                 .filter(([k]) => r.macros[k] != null)
                 .map(([k, label]) => `<div class="macro"><span class="macro-value">${r.macros[k]}${k === "kcal" ? "" : " g"}</span><span class="macro-label">${label}</span></div>`)
                 .join("")}
