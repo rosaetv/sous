@@ -1,0 +1,1000 @@
+/* Estilos de la app. Los valores visuales vienen de theme.css */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  stroke-width: var(--icon-stroke);
+}
+
+/* Lo oculto se queda oculto aunque su clase diga display: flex */
+[hidden] {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- Estructura ---------- */
+
+.view {
+  padding: calc(env(safe-area-inset-top) + var(--space-5)) var(--page-gutter)
+    calc(var(--tabbar-height) + env(safe-area-inset-bottom) + var(--space-6));
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ---------- Tipografía ---------- */
+
+.title {
+  font-weight: var(--weight-title);
+  letter-spacing: -0.01em;
+  line-height: var(--line-height-tight);
+}
+
+.eyebrow {
+  color: var(--color-text-faint);
+  font-size: var(--font-size-sm);
+}
+
+.screen-title {
+  margin: var(--space-1) 0 var(--space-5);
+  font-size: var(--font-size-xxl);
+  font-weight: var(--weight-screen-title);
+  letter-spacing: -0.02em;
+}
+
+.section-title {
+  margin: var(--space-7) 0 var(--space-4);
+  font-size: var(--font-size-lg);
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.small {
+  font-size: var(--font-size-sm);
+}
+
+/* ---------- Tarjetas ---------- */
+
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--card-padding);
+}
+
+/* ---------- Botones ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--btn-height);
+  padding: 0 var(--space-5);
+  border: 0;
+  border-radius: var(--radius-md);
+  font-weight: var(--weight-label);
+  font-size: var(--font-size-md);
+  text-decoration: none;
+  transition: transform var(--transition-fast), background var(--transition-fast);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-primary-deep);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+/* Botón de ícono sin fondo (dentro de tarjetas) */
+.icon-btn.plain {
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Chips (filtros y sugerencias) ---------- */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--color-primary);
+  box-shadow: none;
+  color: var(--color-on-primary);
+}
+
+/* ---------- Etiquetas del día (🏢 oficina, 🏋️ gym…) ---------- */
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: var(--tag-gray-bg);
+  color: var(--tag-gray-ink);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+.tag-green { background: var(--tag-green-bg); color: var(--tag-green-ink); }
+.tag-blue { background: var(--tag-blue-bg); color: var(--tag-blue-ink); }
+.tag-peach { background: var(--tag-peach-bg); color: var(--tag-peach-ink); }
+
+/* ---------- Encabezado de Hoy ---------- */
+
+.screen-title-with-sub {
+  margin-bottom: var(--space-1);
+}
+
+.screen-sub {
+  margin-bottom: var(--space-5);
+  color: var(--color-text-muted);
+}
+
+.screen-sub a {
+  color: var(--color-primary-deep);
+}
+
+/* "Comes el menú del Jue 22 · Deshacer" */
+.swap-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--tag-blue-bg);
+  color: var(--tag-blue-ink);
+  font-size: var(--font-size-sm);
+}
+
+.swap-banner span {
+  flex: 1;
+}
+
+.link-btn {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--weight-label);
+}
+
+.tags + .day-notes,
+.tags + .day-progress {
+  margin-top: var(--space-4);
+}
+
+/* Notas fijas del día */
+.day-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.day-notes li {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.day-notes .icon {
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  color: var(--color-accent);
+}
+
+.day-macros {
+  margin: var(--space-3) var(--space-1) 0;
+}
+
+.meals {
+  margin-top: var(--space-5);
+}
+
+.swap-day {
+  margin-top: var(--space-5);
+  color: var(--color-text-muted);
+}
+
+/* Lista de días para intercambiar */
+.day-options {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-4);
+}
+
+.day-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 64px;
+  padding: var(--space-3) 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-divider);
+  background: none;
+  text-align: left;
+}
+
+.day-option:last-child {
+  border-bottom: 0;
+}
+
+.day-option-date {
+  width: 56px;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.day-option-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.day-option-warn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--swapped-ink);
+  font-size: var(--font-size-xs);
+}
+
+.day-option-warn .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.day-option .chevron {
+  color: var(--color-text-faint);
+}
+
+/* ---------- Campos de texto ---------- */
+
+.field {
+  width: 100%;
+  min-height: var(--btn-height);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: max(16px, var(--font-size-md)); /* 16px o más: así el iPhone no hace zoom */
+}
+
+.field:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+textarea.field {
+  min-height: 200px;
+  resize: vertical;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 16px;
+}
+
+/* ---------- Progreso del día (un segmento por comida) ---------- */
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.progress-bar {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 6px;
+}
+
+.progress-bar span {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-decor);
+  transition: background var(--transition-soft);
+}
+
+.progress-bar [data-state="comido"] { background: var(--eaten-dot); }
+.progress-bar [data-state="cambiado"] { background: var(--swapped-dot); }
+.progress-bar [data-state="no"] { background: var(--skipped-dot); }
+
+/* ---------- Tarjeta de comida ---------- */
+
+.meal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  transition: background var(--transition-soft);
+}
+
+.meal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: -10px -10px -12px 0; /* el botón de receta no empuja el contenido */
+}
+
+.meal-moment {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.meal-name {
+  font-size: var(--font-size-lg);
+}
+
+.meal-ingredients li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.meal-ingredients li:first-child {
+  padding-top: 0;
+}
+
+.meal-ingredients li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.meal-ingredients .qty {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.meal-note {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.meal-note .icon {
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+}
+
+/* Qué comiste en su lugar (cuando está "Cambiado") */
+.meal-swap {
+  color: var(--swapped-ink);
+  font-size: var(--font-size-sm);
+}
+
+/* Una vez marcada: un toque de color muy suave arriba de la tarjeta */
+.meal[data-state="comido"] { background: linear-gradient(180deg, var(--eaten-bg), var(--color-surface) 45%); }
+.meal[data-state="cambiado"] { background: linear-gradient(180deg, var(--swapped-bg), var(--color-surface) 45%); }
+.meal[data-state="no"] { background: linear-gradient(180deg, var(--skipped-bg), var(--color-surface) 45%); }
+
+.meal[data-state="no"] .meal-name {
+  color: var(--color-text-muted);
+}
+
+/* Ver / ocultar ingredientes de una comida ya marcada */
+.meal-toggle {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  min-height: var(--tap-min);
+  margin: -8px 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.meal-toggle .icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Tu nota sobre la comida */
+.meal-user-note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+}
+
+/* ---------- Botones de marcado: Comido / Cambiado / No ---------- */
+
+.marks {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--mark-height);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--weight-label);
+  transition: background var(--transition-fast), opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.mark-emoji {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.mark:active {
+  transform: scale(0.95);
+}
+
+/* Cuando ya hay uno elegido, los otros se apagan (pero se pueden tocar para cambiar). */
+.marks:has([aria-pressed="true"]) .mark:not([aria-pressed="true"]) {
+  opacity: 0.5;
+}
+
+.mark[aria-pressed="true"] {
+  box-shadow: none;
+}
+
+.mark[data-mark="comido"][aria-pressed="true"] { background: var(--eaten-bg); color: var(--eaten-ink); }
+.mark[data-mark="cambiado"][aria-pressed="true"] { background: var(--swapped-bg); color: var(--swapped-ink); }
+.mark[data-mark="no"][aria-pressed="true"] { background: var(--skipped-bg); color: var(--skipped-ink); }
+
+/* Animación al marcar: el botón rebota y sale un anillo */
+.mark.just-marked {
+  position: relative;
+  animation: pop var(--transition-pop);
+}
+
+.mark.just-marked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 0 currentColor;
+  animation: ring 600ms ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes pop {
+  0% { transform: scale(0.9); }
+  55% { transform: scale(1.07); }
+  100% { transform: scale(1); }
+}
+
+@keyframes ring {
+  0% { box-shadow: 0 0 0 0 currentColor; opacity: 0.35; }
+  100% { box-shadow: 0 0 0 14px currentColor; opacity: 0; }
+}
+
+/* 👍 / 👎 / nota, después de marcar */
+.feedback {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  animation: fade-in var(--transition-soft);
+}
+
+.feedback .chip {
+  min-width: 52px;
+  min-height: 44px;
+  font-size: 18px;
+}
+
+.feedback .chip[aria-pressed="true"] {
+  background: var(--color-primary-soft);
+  box-shadow: inset 0 0 0 1.5px var(--color-accent);
+}
+
+.feedback .chip.note {
+  font-size: var(--font-size-sm);
+}
+
+/* ---------- Tarjeta de receta ---------- */
+
+.recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--card-gap);
+}
+
+.recipe {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  text-decoration: none;
+}
+
+.recipe-photo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3.4;
+  background-size: cover;
+  background-position: center;
+}
+
+.recipe-emoji {
+  font-size: 52px;
+  line-height: 1;
+  filter: drop-shadow(0 6px 10px rgba(60, 45, 30, 0.18));
+}
+
+.recipe-photo[data-cat="comida"] { background-image: var(--cat-comida); }
+.recipe-photo[data-cat="desayuno"] { background-image: var(--cat-desayuno); }
+.recipe-photo[data-cat="colacion"] { background-image: var(--cat-colacion); }
+.recipe-photo[data-cat="modulo"] { background-image: var(--cat-modulo); }
+.recipe-photo[data-cat="sazon"] { background-image: var(--cat-sazon); }
+
+.recipe-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px var(--space-4) var(--space-4);
+}
+
+.recipe-name {
+  font-size: var(--font-size-md);
+  line-height: 1.3;
+}
+
+.recipe-meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* ---------- Hoja que sube desde abajo ---------- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(31, 35, 40, 0.28);
+  animation: fade-in var(--transition-soft);
+}
+
+.sheet {
+  width: 100%;
+  max-width: 520px;
+  max-height: 92dvh;
+  overflow-y: auto;
+  padding: var(--space-3) var(--page-gutter) calc(var(--space-5) + env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--shadow-sheet);
+  animation: slide-up var(--transition-soft);
+}
+
+.sheet-handle {
+  width: 40px;
+  height: 5px;
+  margin: 0 auto var(--space-4);
+  border-radius: var(--radius-full);
+  background: var(--color-decor);
+}
+
+.sheet-title {
+  font-size: var(--font-size-xl);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+}
+
+/* ---------- Barra de pestañas ---------- */
+
+.tabbar {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  height: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
+  padding: 0 var(--space-2) env(safe-area-inset-bottom);
+  background: rgba(255, 255, 255, 0.94);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-float);
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--color-text-faint);
+  font-size: 11px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.tab .icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* Pestaña activa: verde, con una rayita arriba (como las referencias) */
+.tab[aria-current="page"] {
+  color: var(--color-primary-deep);
+}
+
+.tab[aria-current="page"] .icon {
+  color: var(--color-accent);
+}
+
+.tab[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 22%;
+  right: 22%;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--color-accent);
+}
+
+/* ---------- Aviso breve ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom) + var(--space-5));
+  z-index: 30;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  background: var(--color-text);
+  color: var(--color-surface);
+  font-size: var(--font-size-sm);
+  font-weight: var(--weight-label);
+  text-align: center;
+  width: max-content;
+  max-width: calc(100vw - 2 * var(--page-gutter));
+  transform: translateX(-50%);
+  animation: fade-in var(--transition-fast);
+}
+
+/* ---------- Aviso de versión nueva ---------- */
+
+.update-bar {
+  position: fixed;
+  left: var(--page-gutter);
+  right: var(--page-gutter);
+  bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom) + var(--space-4));
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: 0 12px 32px rgba(31, 35, 40, 0.14);
+  font-weight: var(--weight-label);
+}
+
+.update-bar .btn {
+  min-height: 40px;
+  padding: 0 var(--space-4);
+}
+
+/* ---------- Estados vacíos ---------- */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+}
+
+.empty-emoji {
+  font-size: 44px;
+  line-height: 1;
+}
+
+.empty h2 {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-lg);
+}
+
+.empty p {
+  color: var(--color-text-muted);
+}
+
+.empty .btn {
+  margin-top: var(--space-3);
+}
+
+/* ---------- Importar ---------- */
+
+.btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.import-ok {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: var(--eaten-bg);
+  box-shadow: none;
+}
+
+.import-emoji {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.import-errors {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background: var(--swapped-bg);
+  box-shadow: none;
+}
+
+.import-errors ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: 20px;
+  list-style: disc;
+}
+
+.import-warning {
+  display: flex;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.import-warning .icon {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+
+.import-done .btn-block {
+  margin-top: var(--space-2);
+}
+
+/* ---------- Ajustes: listas agrupadas ---------- */
+
+.list {
+  overflow: hidden;
+  padding: 0;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--btn-height);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  text-decoration: none;
+}
+
+.list-button {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  background: none;
+  text-align: left;
+}
+
+.list-item:last-child {
+  border-bottom: 0;
+}
+
+.list-item .icon:first-child {
+  color: var(--color-accent);
+}
+
+.list-item .grow {
+  flex: 1;
+}
+
+.list-item .chevron {
+  color: var(--color-text-faint);
+}
+
+.version {
+  margin-top: var(--space-6);
+  color: var(--color-text-faint);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+/* ---------- Guía de estilos ---------- */
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.swatch {
+  display: flex;
+  align-items: flex-end;
+  min-height: 72px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--weight-label);
+}
+
+/* Quien prefiera menos movimiento (Ajustes de iOS → Accesibilidad) no ve animaciones */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

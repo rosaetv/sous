@@ -1,0 +1,125 @@
+/* =========================================================
+   SOUS — TEMA VISUAL
+   ---------------------------------------------------------
+   Este es el único archivo que necesitas tocar para cambiar
+   el aspecto de la app. Todo el resto del CSS usa estas
+   variables. Cambia un valor, guarda y recarga la página.
+   Puedes ver todas las piezas juntas en #/styleguide.
+   ========================================================= */
+
+/* ---------- Fuente (guardada en /fonts para funcionar sin internet) ---------- */
+@font-face {
+  font-family: "Onest";
+  src: url("../fonts/onest.woff2") format("woff2");
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ---------- Colores base ----------
+     Blanco limpio, grises neutros y un verde fresco, como las referencias.
+     Todo el texto cumple contraste WCAG AA (4,5:1) sobre su fondo.
+     Si cambias un color, revisa el contraste en webaim.org/resources/contrastchecker */
+  --color-bg: #f6f7f9;            /* fondo general (gris muy claro) */
+  --color-surface: #ffffff;       /* tarjetas */
+  --color-surface-2: #f6f7f9;     /* campos de texto, notas dentro de tarjetas */
+  --color-border: #e8eaed;        /* bordes finos de botones y chips */
+  --color-divider: #f0f1f3;       /* separadores entre filas */
+
+  --color-text: #1f2328;          /* texto principal (casi negro) */
+  --color-text-muted: #6b7178;    /* texto secundario */
+  --color-text-faint: #6b7178;    /* fechas, ayudas */
+  --color-decor: #e3e5e8;         /* solo decorativo: barra vacía, asa de las hojas */
+
+  --color-primary: #3a8226;       /* verde: botón principal, chip elegido (texto blanco encima) */
+  --color-on-primary: #ffffff;
+  --color-accent: #6cb33f;        /* verde fresco: íconos, progreso, pestaña activa (sin texto encima) */
+  --color-primary-soft: #eaf5e2;  /* fondo suave del verde */
+  --color-primary-deep: #2f6b1f;  /* texto verde sobre fondo suave o blanco */
+
+  /* ---------- Estado de cada comida ----------
+     Sin rojo de alarma: "No" no es un fallo, solo un dato. */
+  --eaten-bg: #eaf5e2;    --eaten-ink: #2f6b1f;    --eaten-dot: #6cb33f;    /* ✅ Comido */
+  --swapped-bg: #fff3d9;  --swapped-ink: #875400;  --swapped-dot: #f2b441;  /* 🔄 Cambiado */
+  --skipped-bg: #eef0f2;  --skipped-ink: #4b5157;  --skipped-dot: #a3a8ae;  /* ❌ No */
+
+  /* ---------- Etiquetas (pastilla pastel con texto oscuro) ---------- */
+  --tag-green-bg: #eaf5e2;  --tag-green-ink: #2f6b1f;
+  --tag-blue-bg: #e8f1fa;   --tag-blue-ink: #2c5f8a;
+  --tag-peach-bg: #fdeee2;  --tag-peach-ink: #8a4a1c;
+  --tag-gray-bg: #eef0f2;   --tag-gray-ink: #4b5157;
+
+  /* ---------- Categorías de receta ----------
+     Degradado de la tarjeta cuando la receta no tiene foto (el emoji va encima). */
+  --cat-comida: linear-gradient(150deg, #f1f8ea 0%, #d6ebc4 100%);    /* verde */
+  --cat-desayuno: linear-gradient(150deg, #fff4ea 0%, #fbd9bd 100%);  /* durazno */
+  --cat-colacion: linear-gradient(150deg, #fffaea 0%, #f8e4a8 100%);  /* miel */
+  --cat-modulo: linear-gradient(150deg, #f4f2fc 0%, #ddd7f3 100%);    /* lavanda */
+  --cat-sazon: linear-gradient(150deg, #fff0ec 0%, #f6cbbd 100%);     /* coral */
+
+  /* ---------- Sombras (muy suaves, como flotando) ---------- */
+  --shadow-card: 0 1px 2px rgba(31, 35, 40, 0.03), 0 6px 24px rgba(31, 35, 40, 0.05);
+  --shadow-float: 0 -1px 0 rgba(31, 35, 40, 0.04), 0 -8px 24px rgba(31, 35, 40, 0.04);
+  --shadow-sheet: 0 -8px 40px rgba(31, 35, 40, 0.12);
+
+  /* ---------- Tipografía ----------
+     Onest: clara y suave sin ser redonda, muy buena en tamaños pequeños. */
+  --font-body: "Onest", -apple-system, system-ui, sans-serif;
+  --weight-screen-title: 700; /* solo los títulos grandes de pantalla */
+  --weight-title: 500;        /* nombres de platos y títulos de sección */
+  --weight-label: 500;        /* botones y chips */
+
+  /* Tamaños relativos al texto base (1rem). En el iPhone, 1rem sigue tu ajuste
+     de "Tamaño del texto". Los px son con el tamaño estándar (16px). */
+  --font-size-xs: 0.8125rem;  /* 13px — etiquetas */
+  --font-size-sm: 0.9375rem;  /* 15px — texto secundario */
+  --font-size-md: 1.0625rem;  /* 17px — texto normal (como iOS) */
+  --font-size-lg: 1.25rem;    /* 20px — nombre del plato, títulos de sección */
+  --font-size-xl: 1.625rem;   /* 26px — títulos de hojas */
+  --font-size-xxl: 2.125rem;  /* 34px — título de pantalla (como iOS) */
+
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+
+  /* ---------- Espaciados ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --page-gutter: 20px;
+  --card-padding: 20px;
+  --card-gap: 16px;           /* espacio entre tarjetas */
+
+  /* ---------- Formas ---------- */
+  --radius-sm: 12px;
+  --radius-md: 14px;    /* botones */
+  --radius-lg: 20px;    /* tarjetas */
+  --radius-xl: 28px;    /* hojas que suben desde abajo */
+  --radius-full: 999px;
+
+  /* ---------- Tamaños táctiles (pensados para una mano) ---------- */
+  --tap-min: 44px;
+  --btn-height: 52px;
+  --mark-height: 56px;  /* botones Comido / Cambiado / No */
+  --tabbar-height: 60px;
+  --icon-stroke: 1.75;  /* grosor de línea de los íconos (finos, como las referencias) */
+
+  /* ---------- Movimiento ---------- */
+  --transition-fast: 160ms ease;
+  --transition-soft: 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --transition-pop: 420ms cubic-bezier(0.34, 1.56, 0.64, 1); /* rebote al marcar */
+}
+
+/* ---------- Ajustes solo para el teléfono ---------- */
+@media (pointer: coarse) {
+  /* El texto base sigue tu ajuste de iOS (Ajustes → Pantalla y brillo →
+     Tamaño del texto). Si prefieres un tamaño fijo, borra esta regla. */
+  html {
+    font: -apple-system-body;
+  }
+}

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Sous: un plato visto desde arriba con una hojita, sobre verde fresco -->
+  <rect width="1024" height="1024" fill="#79BC4C"/>
+  <circle cx="512" cy="530" r="318" fill="#4F9A2E" opacity="0.35"/>
+  <circle cx="512" cy="512" r="318" fill="#FFFFFF"/>
+  <circle cx="512" cy="512" r="226" fill="none" stroke="#EEF0F2" stroke-width="14"/>
+  <g transform="rotate(-35 560 470)">
+    <path d="M560 330 C 650 400, 650 540, 560 610 C 470 540, 470 400, 560 330 Z" fill="#3A8226"/>
+    <path d="M560 360 L 560 640" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" opacity="0.7"/>
+  </g>
+  <circle cx="430" cy="600" r="34" fill="#F2B441"/>
+</svg>
