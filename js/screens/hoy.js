@@ -8,7 +8,7 @@ import { editableFrom, diffMeal, hasChanges } from "../logic/cambios.js";
 import { weekFor, dayPlan, marksFor, setMark, clearMark, updateMark, swapDays, recipeIds, recipesById, checksWithPrefix } from "../store.js";
 import { swapTargets, chooseAndSwap } from "../swap-day.js";
 import { batchCardHTML, toggleBatchCheck } from "../batch-card.js";
-import { fechaDelBatch } from "../logic/batch.js";
+import { fechaDelBatch, progresoBatch } from "../logic/batch.js";
 
 function longDate(fecha) {
   const text = fromISO(fecha).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" });
@@ -96,7 +96,7 @@ export async function renderHoy(view, fechaParam) {
 
   const swapOptions = swapTargets(semana, fecha, today);
 
-  // El batch que toca este día (si "cuando" nombra el día de la semana), arriba de las comidas.
+  // El mealprep que toca este día (si "cuando" nombra el día de la semana), después de la cena.
   const batchHoy = semana.batch.map((b, i) => i).filter((i) => fechaDelBatch(semana.batch[i].cuando, semana.inicio, semana.fin) === fecha);
   const [batchChecks, recetasMap] = batchHoy.length
     ? await Promise.all([checksWithPrefix(`${semana.inicio}|batch|`), recipesById()])
@@ -104,6 +104,30 @@ export async function renderHoy(view, fechaParam) {
 
   const card = (comida) =>
     mealCardHTML(comida, marks[comida.momento], { hasRecipe: comida.recetaId && recetas.has(comida.recetaId), open: open.has(comida.momento) });
+
+  // Lo pendiente primero (comidas en orden y luego el mealprep); lo ya marcado baja al final, en el mismo orden.
+  function listHTML() {
+    const batchCard = (i) => batchCardHTML({ semana, i, checks: batchChecks, recetas: recetasMap });
+    const batchDone = (i) => {
+      const { hechos, total } = progresoBatch(semana.inicio, i, semana.batch[i], batchChecks);
+      return hechos === total;
+    };
+    const pending = [...plan.comidas.filter((c) => !marks[c.momento]).map(card), ...batchHoy.filter((i) => !batchDone(i)).map(batchCard)];
+    const done = [...plan.comidas.filter((c) => marks[c.momento]).map(card), ...batchHoy.filter(batchDone).map(batchCard)];
+    return `
+      ${pending.length ? `<div class="stack meals">${pending.join("")}</div>` : ""}
+      ${done.length ? `${pending.length ? `<p class="done-label">Ya marcado</p>` : ""}<div class="stack meals">${done.join("")}</div>` : ""}`;
+  }
+
+  // Al marcar, la tarjeta se queda un momento (para ver la animación) y luego baja con lo ya marcado.
+  function scheduleReorder() {
+    clearTimeout(view.reorder);
+    view.reorder = setTimeout(() => {
+      const list = view.querySelector(".day-list");
+      if (list) list.innerHTML = listHTML();
+    }, 700);
+  }
+  view.cleanup = () => clearTimeout(view.reorder);
 
   view.innerHTML = `
     ${header(fecha, isToday)}
@@ -117,8 +141,7 @@ export async function renderHoy(view, fechaParam) {
     ${notas.length ? `<section class="day-notes-box">${notesHTML(notas)}</section>` : ""}
     <div class="day-progress">${progressHTML(plan.comidas, marks)}</div>
     ${macrosLine(plan.macros)}
-    ${batchHoy.length ? `<div class="stack batches">${batchHoy.map((i) => batchCardHTML({ semana, i, checks: batchChecks, recetas: recetasMap })).join("")}</div>` : ""}
-    <div class="stack meals">${plan.comidas.map(card).join("")}</div>
+    <div class="day-list">${listHTML()}</div>
     ${
       swapOptions.length
         ? `<button class="btn btn-ghost btn-block swap-day" data-action="swap-day">${icon("arrow-left-right")} Comer otro menú ${isToday ? "hoy" : "este día"}</button>`
@@ -141,6 +164,7 @@ export async function renderHoy(view, fechaParam) {
     marks[comida.momento] = { ...marks[comida.momento], estado, sustituto, comio };
     open.delete(comida.momento);
     refresh(comida.momento, { animate: true });
+    scheduleReorder();
     marks[comida.momento] = await setMark(fecha, comida, { estado, sustituto, comio });
   }
 
@@ -223,7 +247,7 @@ export async function renderHoy(view, fechaParam) {
   }
 
   view.onclick = async (event) => {
-    if (await toggleBatchCheck(event, semana, batchChecks)) return;
+    if (await toggleBatchCheck(event, semana, batchChecks)) return scheduleReorder();
     const cardEl = event.target.closest(".meal");
     const comida = cardEl && plan.comidas.find((c) => c.momento === cardEl.dataset.momento);
     const markBtn = event.target.closest("[data-mark]");
@@ -236,6 +260,7 @@ export async function renderHoy(view, fechaParam) {
         // Tocar el botón ya elegido lo desmarca.
         delete marks[comida.momento];
         refresh(comida.momento);
+        scheduleReorder(); // vuelve a su lugar entre lo pendiente
         await clearMark(fecha, comida.momento);
       } else if (estado === "cambiado") {
         editWhatYouAte(comida);

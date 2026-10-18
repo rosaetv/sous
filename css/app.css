@@ -359,9 +359,6 @@ ul {
   margin: var(--space-3) var(--space-1) 0;
 }
 
-.meals {
-  margin-top: var(--space-5);
-}
 
 .swap-day {
   margin-top: var(--space-5);
@@ -611,6 +608,25 @@ ul {
 }
 
 /* Macros del día */
+/* Mealprep dentro de un día de Semana: un bloque dentro de la tarjeta, sin sombra */
+.day-body .batch {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  box-shadow: none;
+}
+
+.day-list {
+  margin-top: var(--space-5);
+}
+
+/* Separador entre lo pendiente y lo ya marcado */
+.done-label {
+  margin: var(--space-6) var(--space-1) var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
 .macros {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

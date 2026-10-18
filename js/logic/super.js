@@ -1,5 +1,5 @@
-// Ordena la lista del súper para comprar: por sección (en el orden en que vienen),
-// lo pendiente arriba y lo resuelto abajo; las secciones terminadas bajan al final.
+// Agrupa la lista del súper por sección, en el orden en que vienen.
+// Nada cambia de lugar al palomear (así no se palomea algo por error porque la lista se movió).
 //
 // Estado de cada artículo:
 //   ""        pendiente
@@ -8,7 +8,6 @@
 //   "nohabia" no había (baja con lo comprado)
 
 const RESOLVED = new Set(["todo", "nohabia"]);
-const rank = (estado) => (estado === "parcial" ? 0 : RESOLVED.has(estado) ? 2 : 1);
 
 // Lo guardado (true o { estado, llevo }) → { estado, llevo }
 export function itemState(value) {
@@ -21,8 +20,6 @@ export function supersOf(items) {
   return [...new Set(items.map((i) => i.super).filter(Boolean))];
 }
 
-const byRank = (list) => list.map((item, i) => ({ item, i })).sort((a, b) => rank(a.item.estado) - rank(b.item.estado) || a.i - b.i).map((x) => x.item);
-
 // states: Map de id → valor guardado. superFilter: "" para todos.
 export function groupList(items, states, superFilter = "") {
   const visible = items.filter((i) => !superFilter || !i.super || i.super === superFilter);
@@ -34,15 +31,12 @@ export function groupList(items, states, superFilter = "") {
     if (!section) sections.push((section = { seccion: item.seccion, items: [] }));
     section.items.push(item);
   }
-  for (const section of sections) {
-    section.items = byRank(section.items);
-    section.done = section.items.every((i) => RESOLVED.has(i.estado));
-  }
+  for (const section of sections) section.done = section.items.every((i) => RESOLVED.has(i.estado));
 
   const toBuy = withState.filter((i) => !i.probablementeYaTengo);
   return {
-    sections: [...sections.filter((s) => !s.done), ...sections.filter((s) => s.done)],
-    maybe: byRank(withState.filter((i) => i.probablementeYaTengo)),
+    sections,
+    maybe: withState.filter((i) => i.probablementeYaTengo),
     counts: {
       done: toBuy.filter((i) => RESOLVED.has(i.estado)).length,
       partial: toBuy.filter((i) => i.estado === "parcial").length,

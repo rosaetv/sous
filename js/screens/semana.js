@@ -1,5 +1,5 @@
-// Semana: los 7 días plegables con el estado de cada comida y macros; cada mealprep va justo después
-// del día que toca (el de "cuando"). Si no nombra un día, va al final.
+// Semana: los 7 días plegables con el estado de cada comida y macros. El mealprep va dentro de su día
+// (el que nombra "cuando"), después de la cena. Si no nombra un día, va al final de la semana.
 // Semanas anteriores (#/semana/2026-10-12): se pueden abrir sus días para marcar y dar feedback;
 // lo único que no se puede es intercambiar días que ya pasaron.
 
@@ -95,6 +95,7 @@ export async function renderSemana(view, inicioParam) {
             <span class="day-name">${esc(shortDay(plan.fecha))}${plan.fecha === today ? ` <span class="today-badge">Hoy</span>` : ""}</span>
             <span class="day-meta">
               ${plan.etiquetas.map((t) => `<span title="${esc(etiquetaInfo(t).label)}">${etiquetaInfo(t).emoji}</span>`).join("")}
+              ${batchDay.includes(plan.fecha) ? `<span title="Mealprep">🥡</span>` : ""}
               ${swapped ? `<span class="day-swapped">${icon("arrow-left-right")} menú del ${esc(shortDay(plan.origen))}</span>` : ""}
             </span>
           </span>
@@ -121,6 +122,7 @@ export async function renderSemana(view, inicioParam) {
                 })
                 .join("")}
             </ul>
+            ${batchCards(plan.fecha)}
             ${macrosGrid(plan.macros)}
             ${`
               <div class="day-actions">
@@ -170,7 +172,7 @@ export async function renderSemana(view, inicioParam) {
         <p class="small muted">${marked} de ${meals} comidas marcadas · ✅ ${totals.comido} · 🔄 ${totals.cambiado} · ❌ ${totals.no}</p>
       </div>
 
-      <div class="stack days">${all.map((plan) => dayHTML(plan) + batchCards(plan.fecha)).join("")}${batchCards(null)}</div>
+      <div class="stack days">${all.map(dayHTML).join("")}${batchCards(null)}</div>
       <a class="btn btn-ghost btn-block week-summary-link" href="#/resumen/${semana.inicio}">${icon("message-square-text")} Resumen para Claude</a>`;
   }
 

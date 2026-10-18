@@ -117,19 +117,11 @@ export async function renderSuper(view, inicioParam) {
       ${states.size ? `<button class="btn btn-ghost btn-block uncheck-all" data-action="uncheck-all">${icon("rotate-ccw")} Desmarcar todo</button>` : ""}`;
   }
 
-  // Guarda el estado; se ve al instante y la lista se reordena un momento después.
-  function save(id, value, { reorderNow = false } = {}) {
+  // Guarda el estado y vuelve a dibujar. Nada cambia de lugar: solo la casilla, el texto y el progreso.
+  function save(id, value) {
     value ? states.set(id, value) : states.delete(id);
     setCheck(prefix + id, value);
-    clearTimeout(view.reorder);
-    if (reorderNow) return render();
-    const li = view.querySelector(`[data-toggle="${CSS.escape(id)}"]`)?.closest(".item-row");
-    if (li) {
-      const estado = value === true ? "todo" : value?.estado || "";
-      li.dataset.state = estado;
-      li.querySelector(".checkbox").innerHTML = estado ? icon(BOX_ICON[estado]) : "";
-    }
-    view.reorder = setTimeout(render, 450);
+    render();
   }
 
   function openDetail(item) {
@@ -162,12 +154,12 @@ export async function renderSuper(view, inicioParam) {
         return;
       }
       close();
-      save(item.id, choice === "todo" ? true : choice ? { estado: choice } : null, { reorderNow: true });
+      save(item.id, choice === "todo" ? true : choice ? { estado: choice } : null);
     });
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       close();
-      save(item.id, { estado: "parcial", llevo: form.llevo.value.trim() }, { reorderNow: true });
+      save(item.id, { estado: "parcial", llevo: form.llevo.value.trim() });
     });
   }
 
@@ -217,5 +209,4 @@ export async function renderSuper(view, inicioParam) {
       render();
     }
   };
-  view.cleanup = () => clearTimeout(view.reorder);
 }
