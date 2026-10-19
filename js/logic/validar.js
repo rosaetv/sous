@@ -371,16 +371,24 @@ function validarRecetario(obj, ctx) {
     }
     ids.add(r.id);
     if (!isText(r.nombre)) ctx.errores.push(`${where}: falta el campo nombre.`);
-    const categoria = toCategoria(r.categoria);
-    if (!categoria) {
-      ctx.errores.push(`${where}: categoria debe ser una de: ${CATEGORIAS.map((c) => c.id).join(", ")}${r.categoria ? ` (está como "${r.categoria}")` : ""}.`);
+    // Una o varias categorías: "categorias": ["snack", "antojo"] (o "categoria": "snack").
+    const raw = r.categorias ?? r.categoria;
+    const pedidas = (Array.isArray(raw) ? raw : raw == null || raw === "" ? [] : [raw]).map(text).filter(Boolean);
+    const opciones = CATEGORIAS.map((c) => c.json).join(", ");
+    if (!pedidas.length) ctx.errores.push(`${where}: falta categorias (una o varias de: ${opciones}).`);
+    const categorias = [];
+    for (const c of pedidas) {
+      const id = toCategoria(c);
+      if (!id) ctx.errores.push(`${where}: categoría desconocida "${c}". Debe ser una de: ${opciones}.`);
+      else if (!categorias.includes(id)) categorias.push(id);
     }
     const aparato = typeof r.aparato === "string" ? [r.aparato] : textList(r.aparato, `${where}: aparato`, ctx);
     return [
       {
         id: text(r.id),
         nombre: text(r.nombre),
-        categoria,
+        categoria: categorias[0] || null, // la principal: define el color de la tarjeta
+        categorias,
         emoji: text(r.emoji),
         macros: macros(r.macros, where, ctx),
         tiempoActivoMin: number(r.tiempoActivoMin, `${where}: tiempoActivoMin`, ctx),

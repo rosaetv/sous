@@ -2,7 +2,7 @@
 // Las fotos viven solo en el teléfono (IndexedDB), nunca en el código.
 
 import { esc, icon, emptyState, toast, askSheet } from "../ui.js";
-import { CATEGORIAS, MACROS_PANTALLA } from "../logic/menu.js";
+import { CATEGORIAS, MACROS_PANTALLA, categoriasDe } from "../logic/menu.js";
 import { ingredientHTML } from "../meal-card.js";
 import { resizeToJpeg } from "../lib/imagen.js";
 import { allRecipes, getRecipe, allPhotos, getPhoto, savePhoto, deletePhoto, deleteRecipe, cacheRecipeImage, recipeHistory } from "../store.js";
@@ -85,7 +85,7 @@ export async function renderRecetas(view, id) {
 
   const urls = photoUrls();
   view.cleanup = urls.release;
-  const categorias = CATEGORIAS.filter((c) => recetas.some((r) => r.categoria === c.id));
+  const categorias = CATEGORIAS.filter((c) => recetas.some((r) => categoriasDe(r).includes(c.id)));
   if (!categorias.some((c) => c.id === filtro)) filtro = "";
 
   view.innerHTML = `
@@ -109,7 +109,7 @@ export async function renderRecetas(view, id) {
   const photoSrc = new Map(); // se crea una URL por foto una sola vez
 
   function renderGrid() {
-    const visible = recetas.filter((r) => (!filtro || r.categoria === filtro) && matchesSearch(r, busqueda));
+    const visible = recetas.filter((r) => (!filtro || categoriasDe(r).includes(filtro)) && matchesSearch(r, busqueda));
     grid.innerHTML = visible.length
       ? visible
           .map((r) => {
@@ -201,7 +201,7 @@ async function renderDetalle(view, id) {
       </div>
 
       <h1 class="title recipe-title">${esc(r.nombre)}</h1>
-      <p class="muted recipe-sub">${esc(CATEGORIAS.find((c) => c.id === r.categoria)?.label || "")}${tagsLine(r) ? ` · ${tagsLine(r)}` : ""}</p>
+      <p class="muted recipe-sub">${esc(categoriasDe(r).map((id) => CATEGORIAS.find((c) => c.id === id)?.label).filter(Boolean).join(" · "))}${tagsLine(r) ? ` · ${tagsLine(r)}` : ""}</p>
 
       ${
         r.macros

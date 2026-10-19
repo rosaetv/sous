@@ -105,7 +105,7 @@ export function renderStyleguide(view) {
         <button class="chip" aria-pressed="true">Todas</button>
         <button class="chip" aria-pressed="false">Comida</button>
         <button class="chip" aria-pressed="false">Desayuno</button>
-        <button class="chip" aria-pressed="false">Colación</button>
+        <button class="chip" aria-pressed="false">Snacks</button>
       </div>
     </div>
 

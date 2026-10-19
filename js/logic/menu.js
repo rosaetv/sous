@@ -4,20 +4,21 @@
 
 export const MOMENTOS = [
   { id: "desayuno", json: "desayuno", label: "Desayuno", alias: [] },
-  { id: "colacion-manana", json: "colacion-matutina", label: "Colación matutina", alias: ["colacion-manana", "colacion am"] },
+  { id: "colacion-manana", json: "snack-matutino", label: "Snack matutino", alias: ["colacion-matutina", "colacion-manana", "colacion am", "snack am", "snack manana"] },
   { id: "comida", json: "comida", label: "Comida", alias: [] },
-  { id: "colacion-tarde", json: "colacion-vespertina", label: "Colación vespertina", alias: ["colacion-tarde", "colacion pm", "merienda"] },
+  { id: "colacion-tarde", json: "snack-vespertino", label: "Snack vespertino", alias: ["colacion-vespertina", "colacion-tarde", "colacion pm", "merienda", "snack pm", "snack tarde"] },
   { id: "cena", json: "cena", label: "Cena", alias: [] },
 ];
 
+// id: cómo se guarda (no cambiarlo). json: el nombre que pedimos a Claude.
 export const CATEGORIAS = [
-  { id: "comida", label: "Comidas y cenas", alias: ["comidas", "comidas y cenas", "cena", "cenas"] },
-  { id: "desayuno", label: "Desayunos", alias: ["desayunos"] },
-  { id: "colacion", label: "Colaciones", alias: ["colaciones", "colaciones grab and go", "snack"] },
-  { id: "modulo", label: "Módulos", alias: ["modulos", "modulos base"] },
-  { id: "sazon", label: "Sazones", alias: ["sazones"] },
+  { id: "comida", json: "comida", label: "Comidas y cenas", alias: ["comidas", "comidas y cenas", "cena", "cenas"] },
+  { id: "desayuno", json: "desayuno", label: "Desayunos", alias: ["desayunos"] },
+  { id: "colacion", json: "snack", label: "Snacks", alias: ["snacks", "colacion", "colaciones", "colaciones grab and go"] },
+  { id: "modulo", json: "modulo", label: "Módulos", alias: ["modulos", "modulos base"] },
+  { id: "sazon", json: "sazon", label: "Sazones", alias: ["sazones"] },
   // Para un día con mucha ansiedad: opciones ligeras y rápidas en lugar de "comerse una vaca".
-  { id: "antojo", label: "Antojos ligeros", alias: ["antojos", "antojo ligero", "antojos ligeros", "snacks ligeros", "ansiedad"] },
+  { id: "antojo", json: "antojo", label: "Antojos ligeros", alias: ["antojos", "antojo ligero", "antojos ligeros", "snacks ligeros", "ansiedad"] },
 ];
 
 // Macros en pantalla, abreviados para que quepan (la clave es cómo se guardan).
@@ -29,7 +30,7 @@ export const MACROS_PANTALLA = [
   ["fibra", "fibra"],
 ];
 
-// Para comparar sin acentos, mayúsculas, guiones ni espacios: "Colación matutina" = "colacion-matutina".
+// Para comparar sin acentos, mayúsculas, guiones ni espacios: "Snack matutino" = "snack-matutino".
 const flat = (s) =>
   String(s || "")
     .toLowerCase()
@@ -45,6 +46,10 @@ function find(list, value) {
 
 export const toMomento = (value) => find(MOMENTOS, value);
 export const toCategoria = (value) => find(CATEGORIAS, value);
+
+// Categorías de una receta: puede tener varias (por ejemplo snack y antojo).
+// Las recetas guardadas antes de 1.9 solo tienen "categoria".
+export const categoriasDe = (r) => r.categorias || (r.categoria ? [r.categoria] : []);
 
 export const momentoLabel = (id) => MOMENTOS.find((m) => m.id === id)?.label || id;
 

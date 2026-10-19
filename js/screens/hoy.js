@@ -2,7 +2,7 @@
 
 import { esc, icon, emptyState, openSheet, toast } from "../ui.js";
 import { todayISO, fromISO, shortDay, addDays } from "../logic/fechas.js";
-import { notasDeHoy, momentoLabel } from "../logic/menu.js";
+import { notasDeHoy, momentoLabel, categoriasDe } from "../logic/menu.js";
 import { mealCardHTML, tagsHTML } from "../meal-card.js";
 import { editableFrom, diffMeal, hasChanges, sameName } from "../logic/cambios.js";
 import { reservaDelDia } from "../logic/reserva.js";
@@ -174,7 +174,7 @@ export async function renderHoy(view, fechaParam) {
   // Antojo ligero: al final del día, discreto (para no tenerlo presente todo el tiempo).
   // Abre la lista de antojos del recetario; tocar uno abre su receta.
   async function openAntojos() {
-    const opciones = (await allRecipes()).filter((r) => r.categoria === "antojo");
+    const opciones = (await allRecipes()).filter((r) => categoriasDe(r).includes("antojo"));
     const item = (r) => `
       <li data-buscar="${esc(`${r.nombre} ${r.ingredientes.map((i) => i.nombre).join(" ")}`.toLowerCase())}">
         <a class="antojo-name" href="#/receta/${encodeURIComponent(r.id)}">

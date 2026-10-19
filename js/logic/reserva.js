@@ -78,7 +78,7 @@ export function reservaDelDia(comidas, marks) {
   return { pendientes, usados };
 }
 
-// Para el resumen: "Mandarina 1 pieza (de la colación matutina) → la comí en la cena".
+// Para el resumen: "Mandarina 1 pieza (de snack matutino) → la comí en la cena".
 export function describeReserva(item) {
   const where = `${item.nombre}${item.cantidad ? ` ${item.cantidad}` : ""} (de ${momentoLabel(item.de).toLowerCase()})`;
   return item.a ? `${where} → la comí en ${momentoLabel(item.a).toLowerCase()}` : `${where} → no la comí`;
