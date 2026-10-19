@@ -151,48 +151,12 @@ export async function setMark(fecha, comida, { estado, sustituto = "", comio = n
     sustituto: estado === "cambiado" ? sustituto : "",
     // Lo que de verdad comiste ({ plato, ingredientes }), si lo editaste al marcar "Cambiado".
     comio: estado === "cambiado" ? comio : null,
-    // Ingredientes palomeados por partes: solo cuentan si la comida está como Comido.
-    partes: estado === "comido" ? previous?.partes || null : null,
     plato: comida.plato,
     recetaId: comida.recetaId,
     marcadoEn: now(),
   };
   await db.put("marcas", mark);
   return mark;
-}
-
-// ---------- Por partes y reserva del día ----------
-
-// Palomea un ingrediente: la comida queda como comida y lo no palomeado pasa a la reserva. No se despalomea.
-export async function checkParte(fecha, comida, nombre) {
-  let mark = await db.get("marcas", `${fecha}|${comida.momento}`);
-  if (!mark || mark.estado !== "comido") mark = await setMark(fecha, comida, { estado: "comido" });
-  const partes = [...(mark.partes || [])];
-  if (!partes.includes(nombre)) partes.push(nombre);
-  const updated = { ...mark, partes };
-  await db.put("marcas", updated);
-  return updated;
-}
-
-// "Comido" en una comida por partes = me comí todo lo que quedaba (lo movido a otra comida se queda allá).
-export async function checkAllPartes(fecha, comida, movidos) {
-  const mark = await db.get("marcas", `${fecha}|${comida.momento}`);
-  const fuera = movidos.filter((m) => m.de === comida.momento).map((m) => m.nombre);
-  const partes = comida.ingredientes.map((i) => i.nombre).filter((n) => !fuera.includes(n));
-  const updated = { ...mark, partes };
-  await db.put("marcas", updated);
-  return updated;
-}
-
-// Lo que pasó de la reserva a otra comida ese día.
-export async function movidosDe(fecha) {
-  return (await db.get("kv", `reserva|${fecha}`))?.movidos || [];
-}
-
-export async function moverDeReserva(fecha, { nombre, de, a }) {
-  const movidos = [...(await movidosDe(fecha)), { nombre, de, a }];
-  await db.put("kv", { movidos }, `reserva|${fecha}`);
-  return movidos;
 }
 
 export async function clearMark(fecha, momento) {
@@ -344,8 +308,7 @@ export async function summaryData(semana) {
   const [marks, lista] = await Promise.all([marksBetween(semana.inicio, semana.fin), db.get("listas", semana.inicio)]);
   const prefix = `${semana.inicio}|super|`;
   const listChecks = new Map([...(await checksMap(prefix))].map(([k, v]) => [k.slice(prefix.length), v]));
-  const movidos = Object.fromEntries(await Promise.all(plans.map(async (p) => [p.fecha, await movidosDe(p.fecha)])));
-  return { semana, plans, marks, lista: lista || null, listChecks, movidos };
+  return { semana, plans, marks, lista: lista || null, listChecks };
 }
 
 // ---------- Borrar una semana ----------
@@ -355,9 +318,7 @@ export async function deleteWeek(inicio) {
   if (!semana) return;
   const marcas = await marksBetween(semana.inicio, semana.fin);
   const checks = await checksWithPrefix(`${inicio}|`);
-  const fechas = semana.dias.map((d) => d.fecha);
-  await db.transaction(["semanas", "marcas", "checks", "listas", "kv"], (s) => {
-    fechas.forEach((f) => s.kv.delete(`reserva|${f}`));
+  await db.transaction(["semanas", "marcas", "checks", "listas"], (s) => {
     s.semanas.delete(inicio);
     marcas.forEach((m) => s.marcas.delete(m.clave));
     checks.forEach((k) => s.checks.delete(k));

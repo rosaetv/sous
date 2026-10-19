@@ -1014,6 +1014,151 @@ ul {
   color: var(--color-text-muted);
 }
 
+/* ---------- Íconos dentro de texto ---------- */
+
+.tag .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.meta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: var(--space-2);
+}
+
+.meta-tag .icon,
+.inline-icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+}
+
+.week-counts {
+  display: flex;
+  font-size: var(--font-size-sm);
+}
+
+.meta-tag.is-eaten { color: var(--eaten-ink); }
+.meta-tag.is-swapped { color: var(--swapped-ink); }
+.meta-tag.is-skipped { color: var(--skipped-ink); }
+
+.day-meta .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.batch-icon {
+  width: 18px;
+  height: 18px;
+  vertical-align: -3px;
+  color: var(--color-accent);
+}
+
+.meal-swap {
+  display: flex;
+  gap: 6px;
+}
+
+.meal-swap .icon {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+/* ---------- Hoja "¿Qué comiste?" ---------- */
+
+.eat-quick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.eat-quick .btn {
+  min-height: 48px;
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.eat-quick [data-skip] .icon {
+  color: var(--skipped-dot);
+}
+
+.eat-quick [data-all] .icon {
+  color: var(--eaten-dot);
+}
+
+.field-label .icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: -3px;
+}
+
+.eat-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.eat-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.eat-row:last-child {
+  border-bottom: 0;
+}
+
+.eat-check {
+  display: flex;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+}
+
+.eat-check:disabled {
+  cursor: default;
+}
+
+.eat-check[aria-pressed="true"] .checkbox {
+  background: var(--color-accent);
+  box-shadow: none;
+  color: #fff;
+}
+
+.eat-name {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.eat-name-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+}
+
+.eat-row .qty-input {
+  flex: 0 0 34%;
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+}
+
+.eat-row .qty-input:disabled {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-text-faint);
+  text-align: right;
+  opacity: 1;
+  -webkit-text-fill-color: var(--color-text-faint);
+}
+
 /* ---------- Campos de texto ---------- */
 
 .field {
@@ -1078,7 +1223,7 @@ textarea.field {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  margin: -10px -10px -12px 0; /* el botón de receta no empuja el contenido */
+  margin: -8px -4px -10px 0; /* el botón de receta y el estado no empujan el contenido */
 }
 
 .meal-moment {
@@ -1154,6 +1299,45 @@ textarea.field {
   color: var(--color-text-muted);
 }
 
+/* Toda la tarjeta se toca para abrir "¿Qué comiste?" */
+.meal {
+  cursor: pointer;
+  transition: transform var(--transition-fast), background var(--transition-soft);
+}
+
+.meal:active {
+  transform: scale(0.99);
+}
+
+.meal-head-end {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Estado en la esquina: círculo vacío o ícono + palabra */
+.meal-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--weight-label);
+}
+
+.meal-status .dot {
+  width: 22px;
+  height: 22px;
+}
+
+.meal-status.is-comido { color: var(--eaten-ink); }
+.meal-status.is-cambiado { color: var(--swapped-ink); }
+.meal-status.is-no { color: var(--skipped-ink); }
+
+.meal-status.just-marked .dot {
+  animation: pop var(--transition-pop);
+}
+
 /* Ver / ocultar ingredientes de una comida ya marcada */
 .meal-toggle {
   display: inline-flex;
@@ -1179,89 +1363,6 @@ textarea.field {
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   font-style: italic;
-}
-
-/* Por partes y reserva */
-.marks:has(.mark:nth-child(2):last-child) {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.meal-parts,
-.meal-extra {
-  color: var(--color-primary-deep);
-  font-size: var(--font-size-sm);
-}
-
-.partes {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-2);
-  animation: fade-in var(--transition-soft);
-}
-
-.partes .check-row:disabled {
-  opacity: 1;
-}
-
-.check-row[data-parte-state="comido"] .checkbox {
-  background: var(--color-accent);
-  box-shadow: none;
-  color: #fff;
-}
-
-.check-row[data-parte-state="movido"] .checkbox {
-  background: var(--tag-blue-bg);
-  box-shadow: none;
-  color: var(--tag-blue-ink);
-}
-
-.check-row[data-parte-state="comido"] .item-name {
-  color: var(--color-text-muted);
-  text-decoration: line-through;
-}
-
-.check-row[data-parte-state="reserva"] .item-meta {
-  color: var(--swapped-ink);
-}
-
-/* Reserva del día: plegada en una línea */
-.reserva-box {
-  margin-bottom: var(--card-gap);
-  padding: 0 var(--card-padding);
-  border-radius: var(--radius-lg);
-  background: var(--swapped-bg);
-}
-
-.reserva-box .notes-toggle {
-  min-height: 52px;
-  color: var(--swapped-ink);
-  font-weight: var(--weight-label);
-}
-
-.reserva-box .notes-toggle .icon {
-  color: var(--swapped-ink);
-}
-
-.reserva-list li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) 0 var(--space-3);
-}
-
-.reserva-list .grow {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.reserva-list .btn {
-  min-height: 40px;
-  padding: 0 var(--space-3);
-  font-size: var(--font-size-sm);
 }
 
 /* Ingredientes de lo que comiste, frente al menú */
@@ -1350,10 +1451,21 @@ textarea.field {
   transition: background var(--transition-fast), opacity var(--transition-fast), transform var(--transition-fast);
 }
 
-.mark-emoji {
-  font-size: 16px;
-  line-height: 1;
+.mark-icon {
+  display: inline-flex;
 }
+
+.mark-icon .icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.25;
+}
+
+/* Cada ícono con el color de su estado */
+.mark[data-mark="comido"] .mark-icon { color: var(--eaten-dot); }
+.mark[data-mark="cambiado"] .mark-icon { color: var(--swapped-dot); }
+.mark[data-mark="no"] .mark-icon { color: var(--skipped-dot); }
+.mark[aria-pressed="true"] .mark-icon { color: inherit; }
 
 .mark:active {
   transform: scale(0.95);
@@ -1416,6 +1528,7 @@ textarea.field {
 .feedback .chip[aria-pressed="true"] {
   background: var(--color-primary-soft);
   box-shadow: inset 0 0 0 1.5px var(--color-accent);
+  color: var(--color-primary-deep);
 }
 
 .feedback .chip.note {
@@ -1803,9 +1916,20 @@ textarea.field {
   text-align: center;
 }
 
-.empty-emoji {
-  font-size: 44px;
-  line-height: 1;
+.empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-deep);
+}
+
+.empty-icon .icon {
+  width: 30px;
+  height: 30px;
 }
 
 .empty h2 {
@@ -1836,9 +1960,14 @@ textarea.field {
   box-shadow: none;
 }
 
-.import-emoji {
-  font-size: 32px;
-  line-height: 1;
+.import-icon {
+  display: inline-flex;
+  color: var(--eaten-ink);
+}
+
+.import-icon .icon {
+  width: 30px;
+  height: 30px;
 }
 
 .import-errors {

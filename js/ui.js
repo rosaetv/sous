@@ -36,10 +36,11 @@ export function openSheet(html, { label = "", onClose } = {}) {
   return { sheet: backdrop.firstElementChild, close };
 }
 
-export function emptyState({ emoji, title, text, action = "" }) {
+// iconName: un ícono de Lucide (grande, en verde).
+export function emptyState({ iconName, title, text, action = "" }) {
   return `
     <section class="card empty">
-      <span class="empty-emoji" aria-hidden="true">${emoji}</span>
+      <span class="empty-icon">${icon(iconName)}</span>
       <h2 class="title">${esc(title)}</h2>
       <p>${esc(text)}</p>
       ${action}

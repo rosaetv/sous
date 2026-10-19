@@ -21,7 +21,9 @@ export function editableFrom(comida) {
 }
 
 // Qué cambió respecto al menú. Los ingredientes se comparan por nombre (sin acentos ni mayúsculas).
+// Lo que tomaste de la reserva (con `de`) no cuenta aquí: se ve aparte.
 export function diffMeal(comida, comio) {
+  comio = { ...comio, ingredientes: comio.ingredientes.filter((i) => !i.de) };
   const original = editableFrom(comida);
   const before = new Map(original.ingredientes.map((i) => [norm(i.nombre), i]));
   const after = new Map(comio.ingredientes.map((i) => [norm(i.nombre), i]));

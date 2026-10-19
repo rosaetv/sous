@@ -3,11 +3,10 @@
 import { esc, icon, emptyState, openSheet, toast } from "../ui.js";
 import { todayISO, fromISO, shortDay, addDays } from "../logic/fechas.js";
 import { notasDeHoy, momentoLabel } from "../logic/menu.js";
-import { partsOf, reservaDelDia, agregadosA } from "../logic/reserva.js";
 import { mealCardHTML, tagsHTML } from "../meal-card.js";
-import { editableFrom, diffMeal, hasChanges } from "../logic/cambios.js";
-import { weekFor, dayPlan, marksFor, setMark, clearMark, updateMark, swapDays, recipeIds, recipesById, checksWithPrefix } from "../store.js";
-import { checkParte, checkAllPartes, movidosDe, moverDeReserva } from "../store.js";
+import { editableFrom, diffMeal, hasChanges, sameName } from "../logic/cambios.js";
+import { reservaDelDia } from "../logic/reserva.js";
+import { weekFor, dayPlan, marksFor, setMark, updateMark, swapDays, recipeIds, recipesById, checksWithPrefix } from "../store.js";
 import { swapTargets, chooseAndSwap } from "../swap-day.js";
 import { batchCardHTML, toggleBatchCheck } from "../batch-card.js";
 import { fechaDelBatch, progresoBatch } from "../logic/batch.js";
@@ -65,7 +64,7 @@ function macrosLine(macros) {
   if (!macros) return "";
   const parts = [
     macros.kcal != null && `${macros.kcal.toLocaleString("es")} kcal`,
-    macros.prot != null && `${macros.prot} g proteína`,
+    macros.prot != null && `${macros.prot} g prot`,
     macros.fibra != null && `${macros.fibra} g fibra`,
   ].filter(Boolean);
   return parts.length ? `<p class="small muted day-macros">${parts.join(" · ")}</p>` : "";
@@ -83,7 +82,7 @@ export async function renderHoy(view, fechaParam) {
     view.innerHTML = `
       ${header(fecha, isToday)}
       ${emptyState({
-        emoji: "🍽️",
+        iconName: "utensils",
         title: semana ? "Este día no tiene menú" : isToday ? "Aún no hay menú para hoy" : "No hay menú para este día",
         text: "Pega el menú que te dio Claude y aquí verás tus comidas.",
         action: `<a class="btn btn-primary" href="#/importar">${icon("clipboard-paste")} Importar menú</a>`,
@@ -92,10 +91,7 @@ export async function renderHoy(view, fechaParam) {
   }
 
   const [marks, recetas] = await Promise.all([marksFor(fecha), recipeIds()]);
-  let movidos = await movidosDe(fecha); // lo que pasó de la reserva a otra comida (solo este día)
   const open = new Set(); // comidas marcadas con los ingredientes abiertos
-  const partesOpen = new Set(); // comidas con "Por partes" abierto (se quedan arriba mientras palomeas)
-  let reservaOpen = false;
   const etiquetasSemana = [...new Set(semana.dias.flatMap((d) => d.etiquetas))];
   const notas = notasDeHoy(semana.notasFijas, plan.etiquetas, etiquetasSemana);
 
@@ -108,72 +104,7 @@ export async function renderHoy(view, fechaParam) {
     : [new Set(), new Map()];
 
   const card = (comida) =>
-    mealCardHTML(comida, marks[comida.momento], {
-      hasRecipe: comida.recetaId && recetas.has(comida.recetaId),
-      open: open.has(comida.momento),
-      parts: partsOf(comida, marks[comida.momento], movidos),
-      agregados: agregadosA(comida.momento, plan.comidas, movidos),
-      partesOpen: partesOpen.has(comida.momento),
-    });
-
-  // Reserva del día, plegada en una línea: lo que no comiste de una comida por partes.
-  function reservaHTML() {
-    const items = reservaDelDia(plan.comidas, marks, movidos);
-    if (!items.length) return "";
-    return `
-      <section class="reserva-box">
-        <button class="notes-toggle" data-action="reserva" aria-expanded="${reservaOpen}">
-          <span aria-hidden="true">🧺</span><span class="grow">${items.length === 1 ? "1 cosa en la reserva" : `${items.length} cosas en la reserva`}</span>
-          ${icon(reservaOpen ? "chevron-up" : "chevron-down", "icon chevron")}
-        </button>
-        ${
-          reservaOpen
-            ? `<ul class="reserva-list">${items
-                .map(
-                  (it, i) => `
-              <li>
-                <span class="grow"><span>${esc(it.nombre)}</span><span class="small muted">del ${esc(momentoLabel(it.de).toLowerCase())}</span></span>
-                <button class="btn btn-secondary" data-reserva="${i}">${icon("plus")} Agregar a…</button>
-              </li>`,
-                )
-                .join("")}</ul>`
-            : ""
-        }
-      </section>`;
-  }
-  const refreshReserva = () => (view.querySelector(".reserva-slot").innerHTML = reservaHTML());
-
-  // Agregar algo de la reserva a otra comida del día (cuenta como comido ahí).
-  function addFromReserva(item) {
-    const destinos = plan.comidas.filter((c) => c.momento !== item.de);
-    const { sheet, close } = openSheet(
-      `
-      <h2 class="title sheet-title">¿Con qué comida?</h2>
-      <p class="muted" style="margin-top: 4px">${esc(item.nombre)} se cuenta como comido ahí.</p>
-      <div class="day-options">
-        ${[...destinos.filter((c) => !marks[c.momento]), ...destinos.filter((c) => marks[c.momento])]
-          .map(
-            (c) => `
-          <button class="day-option" data-destino="${c.momento}">
-            <span class="day-option-text"><span>${esc(momentoLabel(c.momento))}</span><span class="small muted">${esc(c.plato)}</span></span>
-            ${icon("chevron-right", "icon chevron")}
-          </button>`,
-          )
-          .join("")}
-      </div>`,
-      { label: "Agregar de la reserva" },
-    );
-    sheet.addEventListener("click", async (e) => {
-      const a = e.target.closest("[data-destino]")?.dataset.destino;
-      if (!a) return;
-      close();
-      movidos = await moverDeReserva(fecha, { nombre: item.nombre, de: item.de, a });
-      refreshReserva();
-      refresh(item.de);
-      refresh(a);
-      toast(`${item.nombre} → ${momentoLabel(a).toLowerCase()}`);
-    });
-  }
+    mealCardHTML(comida, marks[comida.momento], { hasRecipe: comida.recetaId && recetas.has(comida.recetaId), open: open.has(comida.momento) });
 
   // Lo pendiente primero (comidas en orden y luego el mealprep); lo ya marcado baja al final, en el mismo orden.
   function listHTML() {
@@ -182,10 +113,8 @@ export async function renderHoy(view, fechaParam) {
       const { hechos, total } = progresoBatch(semana.inicio, i, semana.batch[i], batchChecks);
       return hechos === total;
     };
-    // Mientras palomeas por partes, la comida se queda arriba aunque ya cuente como comida.
-    const isDone = (c) => marks[c.momento] && !partesOpen.has(c.momento);
-    const pending = [...plan.comidas.filter((c) => !isDone(c)).map(card), ...batchHoy.filter((i) => !batchDone(i)).map(batchCard)];
-    const done = [...plan.comidas.filter(isDone).map(card), ...batchHoy.filter(batchDone).map(batchCard)];
+    const pending = [...plan.comidas.filter((c) => !marks[c.momento]).map(card), ...batchHoy.filter((i) => !batchDone(i)).map(batchCard)];
+    const done = [...plan.comidas.filter((c) => marks[c.momento]).map(card), ...batchHoy.filter(batchDone).map(batchCard)];
     return `
       ${pending.length ? `<div class="stack meals">${pending.join("")}</div>` : ""}
       ${done.length ? `${pending.length ? `<p class="done-label">Ya marcado</p>` : ""}<div class="stack meals">${done.join("")}</div>` : ""}`;
@@ -213,7 +142,6 @@ export async function renderHoy(view, fechaParam) {
     ${notas.length ? `<section class="day-notes-box">${notesHTML(notas)}</section>` : ""}
     <div class="day-progress">${progressHTML(plan.comidas, marks)}</div>
     ${macrosLine(plan.macros)}
-    <div class="reserva-slot">${reservaHTML()}</div>
     <div class="day-list">${listHTML()}</div>
     ${
       swapOptions.length
@@ -228,7 +156,7 @@ export async function renderHoy(view, fechaParam) {
     old.outerHTML = card(comida);
     view.querySelector(".day-progress").innerHTML = progressHTML(plan.comidas, marks);
     if (animate && marks[momento]) {
-      view.querySelector(`.meal[data-momento="${momento}"] [data-mark="${marks[momento].estado}"]`)?.classList.add("just-marked");
+      view.querySelector(`.meal[data-momento="${momento}"] .meal-status`)?.classList.add("just-marked");
     }
   }
 
@@ -241,57 +169,129 @@ export async function renderHoy(view, fechaParam) {
     marks[comida.momento] = await setMark(fecha, comida, { estado, sustituto, comio });
   }
 
-  // "Cambiado": el menú de esa comida, editable. Quitas, agregas o cambias cantidades y guardas.
+  // "¿Qué comiste?": el menú de esa comida con una casilla por ingrediente.
+  // - Palomear = lo comiste; su cantidad se vuelve editable (si comiste de menos, lo que sobró pasa a la reserva).
+  // - Lo no palomeado pasa a la reserva del día. Lo ya guardado como comido no se despalomea.
+  // - "De la reserva": lo que sobró de otras comidas de hoy; palomearlo = lo comiste con esta.
+  // - "Comí todo" palomea todo; "Me la brinqué" la marca como No (todo a la reserva).
   function editWhatYouAte(comida) {
-    const start = marks[comida.momento]?.comio || editableFrom(comida);
-    const row = (ing = { nombre: "", cantidad: "" }) => `
-      <li class="edit-row">
-        <input class="field" name="nombre" value="${esc(ing.nombre)}" placeholder="Ingrediente" autocomplete="off" enterkeyhint="next" />
-        <input class="field qty-input" name="cantidad" value="${esc(ing.cantidad)}" placeholder="Cantidad" autocomplete="off" enterkeyhint="done" />
-        <button type="button" class="icon-btn plain" data-remove aria-label="Quitar">${icon("x")}</button>
+    const prev = marks[comida.momento];
+    const comio = prev?.estado === "cambiado" ? prev.comio : null;
+    const yaComido = (nombre) => prev?.estado === "comido" || comio?.ingredientes.some((x) => !x.de && sameName(x.nombre, nombre));
+
+    const menuRows = editableFrom(comida).ingredientes.map((i) => {
+      const saved = comio?.ingredientes.find((x) => !x.de && sameName(x.nombre, i.nombre));
+      const on = Boolean(yaComido(i.nombre));
+      return { kind: "menu", nombre: i.nombre, base: i.cantidad, cantidad: saved?.cantidad ?? i.cantidad, on, locked: on };
+    });
+    const extraRows = comio ? diffMeal(comida, comio).agregados.map((x) => ({ kind: "extra", ...x, base: x.cantidad, on: true, locked: true })) : [];
+    const tomadas = (comio?.ingredientes || []).filter((x) => x.de).map((x) => ({ kind: "reserva", ...x, base: x.cantidad, on: true, locked: true }));
+    const disponibles = reservaDelDia(plan.comidas, marks)
+      .pendientes.filter((r) => r.de !== comida.momento)
+      .map((r) => ({ kind: "reserva", nombre: r.nombre, de: r.de, base: r.cantidad, cantidad: r.cantidad, on: false, locked: false }));
+    const reservaRows = [...tomadas, ...disponibles];
+
+    const row = (r) => `
+      <li class="eat-row" data-kind="${r.kind}" data-nombre="${esc(r.nombre)}" data-de="${r.de || ""}" data-base="${esc(r.base || "")}">
+        <button type="button" class="eat-check" aria-pressed="${r.on}" ${r.locked ? "disabled" : ""} aria-label="Lo comí">
+          <span class="checkbox">${icon("check")}</span>
+        </button>
+        ${
+          r.kind === "extra" && !r.nombre
+            ? `<input class="field eat-name-input" name="nombre" placeholder="Ingrediente" autocomplete="off" enterkeyhint="next" />`
+            : `<span class="eat-name">${esc(r.nombre)}${r.de ? `<span class="small muted">de ${esc(momentoLabel(r.de).toLowerCase())}</span>` : ""}</span>`
+        }
+        <input class="field qty-input" name="cantidad" value="${esc(r.cantidad || "")}" placeholder="Cantidad" autocomplete="off" enterkeyhint="done" ${r.on ? "" : "disabled"} />
       </li>`;
 
     const { sheet, close } = openSheet(
       `
       <h2 class="title sheet-title">¿Qué comiste?</h2>
-      <p class="muted" style="margin-top: 4px">Cambia lo que haga falta; lo demás queda como en el menú.</p>
+      <p class="muted" style="margin-top: 4px">${esc(comida.plato)}</p>
+      <div class="eat-quick">
+        <button type="button" class="btn btn-secondary" data-all>${icon("check-check")} Comí todo</button>
+        <button type="button" class="btn btn-secondary" data-skip>${icon("ban")} Me la brinqué</button>
+      </div>
       <form class="swap-editor">
-        <label class="field-label" for="swap-plato">Plato</label>
-        <input class="field" id="swap-plato" name="plato" value="${esc(start.plato)}" autocomplete="off" />
-        <p class="field-label">Ingredientes</p>
-        <ul class="edit-rows">${start.ingredientes.map(row).join("")}</ul>
+        <p class="field-label">Del menú · palomea lo que comiste</p>
+        <ul class="eat-rows" data-list="menu">${[...menuRows, ...extraRows].map(row).join("")}</ul>
         <button type="button" class="btn btn-ghost add-row" data-add>${icon("plus")} Agregar ingrediente</button>
+        ${
+          reservaRows.length
+            ? `<p class="field-label">${icon("package")} De la reserva de hoy</p>
+               <ul class="eat-rows">${reservaRows.map(row).join("")}</ul>`
+            : ""
+        }
+        <p class="small muted">Lo que no palomees, o lo que te sobre, queda en la reserva de hoy para otra comida.</p>
+        <label class="field-label" for="swap-plato">Plato (cámbialo si comiste otra cosa)</label>
+        <input class="field" id="swap-plato" name="plato" value="${esc(comio?.plato || comida.plato)}" autocomplete="off" />
         <button class="btn btn-primary btn-block">Guardar</button>
       </form>`,
       { label: "Qué comiste" },
     );
     const form = sheet.querySelector("form");
-    const list = sheet.querySelector(".edit-rows");
+
+    const setOn = (li, on) => {
+      const btn = li.querySelector(".eat-check");
+      if (btn.disabled) return;
+      btn.setAttribute("aria-pressed", on);
+      const qty = li.querySelector("[name=cantidad]");
+      qty.disabled = !on;
+      if (!on) qty.value = li.dataset.base;
+    };
 
     sheet.addEventListener("click", (e) => {
-      if (e.target.closest("[data-remove]")) e.target.closest(".edit-row").remove();
+      const check = e.target.closest(".eat-check");
+      if (check) {
+        const li = check.closest(".eat-row");
+        setOn(li, check.getAttribute("aria-pressed") !== "true");
+        if (check.getAttribute("aria-pressed") === "true") li.querySelector("[name=cantidad]").focus();
+        return;
+      }
+      if (e.target.closest("[data-all]")) {
+        // Comí todo, tal cual el menú: se guarda al momento.
+        close();
+        mark(comida, "comido");
+        return;
+      }
+      if (e.target.closest("[data-skip]")) {
+        close();
+        mark(comida, "no");
+        return;
+      }
       if (e.target.closest("[data-add]")) {
-        list.insertAdjacentHTML("beforeend", row());
-        list.lastElementChild.querySelector("input").focus();
+        const list = sheet.querySelector('[data-list="menu"]');
+        list.insertAdjacentHTML("beforeend", row({ kind: "extra", nombre: "", cantidad: "", base: "", on: true, locked: false }));
+        list.lastElementChild.querySelector("[name=nombre]").focus();
       }
     });
 
     form.addEventListener("submit", (e) => {
       e.preventDefault();
-      const comio = {
+      const eaten = [...sheet.querySelectorAll(".eat-row")]
+        .filter((li) => li.querySelector(".eat-check").getAttribute("aria-pressed") === "true")
+        .map((li) => ({
+          kind: li.dataset.kind,
+          nombre: li.querySelector("[name=nombre]")?.value.trim() ?? li.dataset.nombre,
+          cantidad: li.querySelector("[name=cantidad]").value.trim(),
+          de: li.dataset.de || undefined,
+        }))
+        .filter((i) => i.nombre);
+      const nuevo = {
         plato: form.plato.value.trim() || comida.plato,
-        ingredientes: [...list.querySelectorAll(".edit-row")]
-          .map((li) => ({ nombre: li.querySelector("[name=nombre]").value.trim(), cantidad: li.querySelector("[name=cantidad]").value.trim() }))
-          .filter((i) => i.nombre),
+        ingredientes: eaten.map(({ kind, de, ...i }) => (kind === "reserva" ? { ...i, de } : i)),
       };
       close();
-      if (!hasChanges(diffMeal(comida, comio))) {
-        // Sin cambios: fue tal cual el menú.
-        mark(comida, "comido");
-        toast("Sin cambios: lo marqué como comido");
+      if (!eaten.length) {
+        mark(comida, "no"); // nada palomeado: no la comiste (todo queda en la reserva)
         return;
       }
-      mark(comida, "cambiado", { sustituto: comio.plato, comio });
+      const conReserva = eaten.some((i) => i.kind === "reserva");
+      if (!conReserva && !hasChanges(diffMeal(comida, nuevo))) {
+        mark(comida, "comido"); // tal cual el menú
+        return;
+      }
+      mark(comida, "cambiado", { sustituto: nuevo.plato, comio: nuevo });
     });
   }
 
@@ -319,64 +319,20 @@ export async function renderHoy(view, fechaParam) {
     if (await chooseAndSwap({ semana, fecha, today })) renderHoy(view, fechaParam);
   }
 
+  view.onkeydown = (event) => {
+    const cardEl = event.target.classList?.contains("meal") && event.target;
+    if (cardEl && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      editWhatYouAte(plan.comidas.find((c) => c.momento === cardEl.dataset.momento));
+    }
+  };
+
   view.onclick = async (event) => {
     if (await toggleBatchCheck(event, semana, batchChecks)) return scheduleReorder();
     const cardEl = event.target.closest(".meal");
     const comida = cardEl && plan.comidas.find((c) => c.momento === cardEl.dataset.momento);
-    const markBtn = event.target.closest("[data-mark]");
     const likeBtn = event.target.closest("[data-like]");
     const action = event.target.closest("[data-action]")?.dataset.action;
-
-    if (comida && markBtn) {
-      const estado = markBtn.dataset.mark;
-      if (estado === "comido" && marks[comida.momento]?.partes) {
-        // Comida por partes: "Comido" = me comí todo lo que quedaba. Lo palomeado no se despalomea.
-        marks[comida.momento] = await checkAllPartes(fecha, comida, movidos);
-        refresh(comida.momento, { animate: true });
-        refreshReserva();
-        return;
-      }
-      if (marks[comida.momento]?.estado === estado) {
-        // Tocar el botón ya elegido lo desmarca.
-        delete marks[comida.momento];
-        refresh(comida.momento);
-        scheduleReorder(); // vuelve a su lugar entre lo pendiente
-        await clearMark(fecha, comida.momento);
-      } else if (estado === "cambiado") {
-        editWhatYouAte(comida);
-      } else {
-        mark(comida, estado);
-      }
-      return;
-    }
-
-    if (comida && action === "partes") {
-      const wasOpen = partesOpen.has(comida.momento);
-      wasOpen ? partesOpen.delete(comida.momento) : partesOpen.add(comida.momento);
-      refresh(comida.momento);
-      if (wasOpen) scheduleReorder(); // al cerrar, si ya cuenta como comida, baja con lo marcado
-      return;
-    }
-
-    const parte = event.target.closest("[data-parte]");
-    if (comida && parte) {
-      marks[comida.momento] = await checkParte(fecha, comida, parte.dataset.parte);
-      refresh(comida.momento);
-      refreshReserva();
-      return;
-    }
-
-    if (action === "reserva") {
-      reservaOpen = !reservaOpen;
-      refreshReserva();
-      return;
-    }
-
-    const fromReserva = event.target.closest("[data-reserva]");
-    if (fromReserva) {
-      addFromReserva(reservaDelDia(plan.comidas, marks, movidos)[Number(fromReserva.dataset.reserva)]);
-      return;
-    }
 
     if (comida && likeBtn) {
       const value = likeBtn.dataset.like;
@@ -387,13 +343,15 @@ export async function renderHoy(view, fechaParam) {
     }
 
     if (comida && action === "note") return askNote(comida);
-    if (comida && action === "edit-swap") return editWhatYouAte(comida);
 
     if (comida && action === "toggle") {
       open.has(comida.momento) ? open.delete(comida.momento) : open.add(comida.momento);
       refresh(comida.momento);
       return;
     }
+
+    // Tocar la tarjeta (fuera de sus botones y enlaces) abre "¿Qué comiste?".
+    if (comida && !event.target.closest("a, button, input")) return editWhatYouAte(comida);
 
     if (action === "notes") {
       try {

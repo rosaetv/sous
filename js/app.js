@@ -44,7 +44,7 @@ async function route() {
   // Limpia lo que dejó la pantalla anterior.
   view.cleanup?.();
   view.cleanup = null;
-  view.onclick = view.oninput = view.onchange = null;
+  view.onclick = view.oninput = view.onchange = view.onkeydown = null;
   document.querySelectorAll(".sheet-backdrop").forEach((s) => s.remove());
 
   document.querySelectorAll(".tab").forEach((t) => {

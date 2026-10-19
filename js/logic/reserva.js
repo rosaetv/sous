@@ -1,51 +1,85 @@
-// Comer por partes y la reserva del día.
+// La reserva del día: lo del menú que no comiste (o comiste de menos) en una comida ya marcada,
+// para comerlo en otra comida del mismo día. Un día nuevo empieza de cero.
 //
-// - Palomear un ingrediente de una comida = esa comida ya se tuvo; lo que no se palomea queda en la reserva del día.
-// - Desde la reserva, un ingrediente se puede agregar a otra comida del mismo día: se cuenta como comido ahí.
-// - Lo palomeado no se puede despalomear. La reserva es solo de ese día: un día nuevo empieza de cero.
-//
-// En la marca de la comida: partes = nombres de los ingredientes que comiste.
-// Lo movido se guarda aparte, por día: [{ nombre, de, a }] (de y a son momentos del día).
+// Sale de las marcas, no se guarda aparte:
+// - "No" (me la brinqué): toda la comida pasa a la reserva.
+// - "Cambiado" con lo que comiste (comio): lo no palomeado pasa entero; si comiste de menos, pasa lo que sobró
+//   ("Rice cake 2 piezas", comiste 1 → reserva "Rice cake 1 pieza").
+// - Lo que otra comida toma de la reserva va en su comio con `de` (la comida de donde vino).
 
 import { sameName } from "./cambios.js";
-import { momentoLabel } from "./menu.js";
+import { formatQty, momentoLabel } from "./menu.js";
 
-// Cada ingrediente de una comida por partes, con su estado: "comido", "movido" (a otra comida) o "reserva".
-// null si la comida no se marcó por partes.
-export function partsOf(comida, mark, movidos = []) {
-  if (!mark?.partes || mark.estado === "cambiado") return null;
-  return comida.ingredientes.map((ing) => {
-    if (mark.partes.some((n) => sameName(n, ing.nombre))) return { ...ing, estado: "comido" };
-    const mov = movidos.find((m) => m.de === comida.momento && sameName(m.nombre, ing.nombre));
-    if (mov) return { ...ing, estado: "movido", a: mov.a };
-    return { ...ing, estado: "reserva" };
+const FRACTIONS = { "¼": 0.25, "½": 0.5, "¾": 0.75, "⅓": 1 / 3, "⅔": 2 / 3 };
+
+const norm = (s) =>
+  String(s || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+
+// "2 piezas" → { n: 2, unidad: "piezas" }; "1½ tazas" → { n: 1.5, … }; "al gusto" → null
+export function parseQty(text) {
+  const s = String(text ?? "").trim();
+  const m = s.match(/^(\d+(?:[.,]\d+)?)?\s*([¼½¾⅓⅔])?/);
+  if (!m || (!m[1] && !m[2])) return null;
+  const n = (m[1] ? Number(m[1].replace(",", ".")) : 0) + (m[2] ? FRACTIONS[m[2]] : 0);
+  return { n, unidad: s.slice(m[0].length).trim() };
+}
+
+// "piezas" → "pieza", "unidades" → "unidad", "g" → "g"
+function singular(unidad) {
+  if (/[dlnr]es$/i.test(unidad)) return unidad.slice(0, -2);
+  if (/s$/i.test(unidad) && unidad.length > 2) return unidad.slice(0, -1);
+  return unidad;
+}
+
+const sameUnit = (a, b) => !a || !b || norm(singular(a)) === norm(singular(b));
+
+// Lo que queda de "total" después de comer "comido". null si no queda nada o no se puede calcular.
+export function remainder(total, comido) {
+  const a = parseQty(total);
+  const b = parseQty(comido);
+  if (!a || !b || !sameUnit(a.unidad, b.unidad)) return null;
+  const rest = Math.round((a.n - b.n) * 100) / 100;
+  return rest > 0 ? formatQty(rest, singular(a.unidad)) : null;
+}
+
+// Lo que sobró de una comida ya marcada: [{ nombre, cantidad, de }]
+function sobrantes(comida, mark) {
+  if (!mark || mark.estado === "comido") return [];
+  const menu = comida.ingredientes.map((i) => ({ nombre: i.nombre, cantidad: formatQty(i.cantidad, i.unidad) }));
+  if (mark.estado === "no") return menu.map((i) => ({ ...i, de: comida.momento }));
+  if (!mark.comio) return []; // marcas viejas: solo decían qué comiste en su lugar
+  return menu.flatMap((i) => {
+    const comido = mark.comio.ingredientes.find((x) => !x.de && sameName(x.nombre, i.nombre));
+    if (!comido) return [{ ...i, de: comida.momento }];
+    const rest = remainder(i.cantidad, comido.cantidad);
+    return rest ? [{ nombre: i.nombre, cantidad: rest, de: comida.momento }] : [];
   });
 }
 
-// Lo que sigue en la reserva del día (de todas las comidas marcadas por partes).
-export function reservaDelDia(comidas, marks, movidos = []) {
-  return comidas.flatMap((c) =>
-    (partsOf(c, marks[c.momento], movidos) || []).filter((p) => p.estado === "reserva").map((p) => ({ ...p, de: c.momento })),
+// La reserva del día: lo que sigue disponible (pendientes) y lo que ya se comió en otra comida (usados).
+export function reservaDelDia(comidas, marks) {
+  const tomados = comidas.flatMap((c) =>
+    (marks[c.momento]?.comio?.ingredientes || []).filter((x) => x.de).map((x) => ({ ...x, a: c.momento })),
   );
+  const pendientes = [];
+  const usados = [];
+  for (const s of comidas.flatMap((c) => sobrantes(c, marks[c.momento]))) {
+    let rest = s.cantidad;
+    for (const t of tomados.filter((x) => x.de === s.de && sameName(x.nombre, s.nombre))) {
+      usados.push({ ...s, cantidad: t.cantidad, a: t.a });
+      rest = rest ? remainder(rest, t.cantidad) : null;
+    }
+    if (rest) pendientes.push({ ...s, cantidad: rest });
+  }
+  return { pendientes, usados };
 }
 
-// Lo que llegó de la reserva a esta comida (ya comido).
-export function agregadosA(momento, comidas, movidos = []) {
-  return movidos
-    .filter((m) => m.a === momento)
-    .map((m) => {
-      const origen = comidas.find((c) => c.momento === m.de);
-      const ing = origen?.ingredientes.find((i) => sameName(i.nombre, m.nombre));
-      return { ...(ing || { nombre: m.nombre }), de: m.de };
-    });
-}
-
-// Para el resumen: "sin Mandarina (la comí en la colación vespertina)" o "sin Mandarina (no la comí)".
-export function describePartes(comida, mark, movidos = []) {
-  const parts = partsOf(comida, mark, movidos);
-  if (!parts) return "";
-  return parts
-    .filter((p) => p.estado !== "comido")
-    .map((p) => `sin ${p.nombre} (${p.estado === "movido" ? `la comí en ${momentoLabel(p.a).toLowerCase()}` : "no la comí"})`)
-    .join(" · ");
+// Para el resumen: "Mandarina 1 pieza (de la colación matutina) → la comí en la cena".
+export function describeReserva(item) {
+  const where = `${item.nombre}${item.cantidad ? ` ${item.cantidad}` : ""} (de ${momentoLabel(item.de).toLowerCase()})`;
+  return item.a ? `${where} → la comí en ${momentoLabel(item.a).toLowerCase()}` : `${where} → no la comí`;
 }

@@ -4,12 +4,11 @@ import { shortDay, rangeLabel } from "./fechas.js";
 import { momentoLabel } from "./menu.js";
 import { itemState } from "./super.js";
 import { swapLabel } from "./cambios.js";
-import { describePartes } from "./reserva.js";
+import { reservaDelDia, describeReserva } from "./reserva.js";
 
 // semana: la semana importada (con intercambios). plans: dayPlan de cada día.
 // marks: lista de marcas de la semana. lista + listChecks (Map id → valor): la lista del súper, si hay.
-// movidos: { fecha: [{ nombre, de, a }] }, lo que pasó de la reserva a otra comida.
-export function buildSummary({ semana, plans, marks, lista = null, listChecks = new Map(), movidos = {} }) {
+export function buildSummary({ semana, plans, marks, lista = null, listChecks = new Map() }) {
   const byKey = new Map(marks.map((m) => [`${m.fecha}|${m.momento}`, m]));
   const lines = [`## Resumen semana ${rangeLabel(semana.inicio, semana.fin)}`, ""];
 
@@ -28,9 +27,6 @@ export function buildSummary({ semana, plans, marks, lista = null, listChecks = 
       const where = `${shortDay(plan.fecha)} · ${momentoLabel(comida.momento)} · ${plato}`;
       const nota = mark.nota ? ` — "${mark.nota}"` : "";
       if (mark.estado === "cambiado") cambios.push(`- ${where} → 🔄 ${swapLabel(comida, mark)}${nota}`);
-      // Por partes: lo que no comiste con esa comida y dónde terminó.
-      const partes = mark.estado === "comido" ? describePartes(comida, mark, movidos[plan.fecha] || []) : "";
-      if (partes) cambios.push(`- ${where} → ✅ por partes: ${partes}${nota}`);
       if (mark.estado === "no") cambios.push(`- ${where} → ❌ No${nota}`);
       // Lo que valoras es lo que comiste: si cambiaste el plato, el nuevo.
       const nombre = mark.estado === "cambiado" ? mark.comio?.plato || mark.sustituto || "Otra cosa" : plato;
@@ -57,6 +53,17 @@ export function buildSummary({ semana, plans, marks, lista = null, listChecks = 
     }
   }
   section(lines, "Intercambios de día", swaps);
+
+  // ---------- Reserva del día ----------
+  // Lo que no comiste o te sobró en una comida: si te lo comiste en otra, o no.
+  // (De una comida que te brincaste solo sale lo que sí comiste después; el resto ya dice "❌ No".)
+  const reserva = plans.flatMap((plan) => {
+    const dayMarks = Object.fromEntries(marks.filter((m) => m.fecha === plan.fecha).map((m) => [m.momento, m]));
+    const { pendientes, usados } = reservaDelDia(plan.comidas, dayMarks);
+    const sinComer = pendientes.filter((p) => dayMarks[p.de]?.estado !== "no");
+    return [...usados, ...sinComer].map((item) => `- ${shortDay(plan.fecha)} · ${describeReserva(item)}`);
+  });
+  section(lines, "Reserva del día", reserva);
 
   // ---------- 👍 / 👎 ----------
   section(lines, "👍 Me gustó", grouped(entries.filter((e) => e.valoracion === "up")));

@@ -18,7 +18,7 @@ export async function renderSuper(view, inicioParam) {
     view.innerHTML = `
       <h1 class="screen-title">Súper</h1>
       ${emptyState({
-        emoji: "🧺",
+        iconName: "shopping-basket",
         title: "Aún no hay lista del súper",
         text: "Pega la lista que te dio Claude y aquí la verás por sección, para palomear mientras compras.",
         action: `<a class="btn btn-primary" href="#/importar">${icon("clipboard-paste")} Importar lista</a>`,
@@ -132,13 +132,13 @@ export async function renderSuper(view, inicioParam) {
       <h2 class="title sheet-title">${esc(item.nombre)}</h2>
       ${item.cantidad ? `<p class="muted" style="margin-top: 4px">Pedía: ${esc(item.cantidad)}</p>` : ""}
       <div class="stack item-options">
-        <button class="btn btn-secondary btn-block option" data-choice="todo" aria-pressed="${estado === "todo"}">✅ Todo</button>
-        <button class="btn btn-secondary btn-block option" data-choice="parcial" aria-pressed="${estado === "parcial"}">◐ Una parte</button>
+        <button class="btn btn-secondary btn-block option" data-choice="todo" aria-pressed="${estado === "todo"}">${icon("check")} Todo</button>
+        <button class="btn btn-secondary btn-block option" data-choice="parcial" aria-pressed="${estado === "parcial"}">${icon("minus")} Una parte</button>
         <form class="partial-form stack" ${estado === "parcial" ? "" : "hidden"}>
           <input class="field" name="llevo" value="${esc(current?.llevo || "")}" placeholder="¿Cuánto llevas? Por ejemplo: 2 latas" autocomplete="off" enterkeyhint="done" />
           <button class="btn btn-primary btn-block">Guardar</button>
         </form>
-        <button class="btn btn-secondary btn-block option" data-choice="nohabia" aria-pressed="${estado === "nohabia"}">✕ No había</button>
+        <button class="btn btn-secondary btn-block option" data-choice="nohabia" aria-pressed="${estado === "nohabia"}">${icon("x")} No había</button>
         ${estado ? `<button class="btn btn-ghost btn-block" data-choice="">Quitar marca</button>` : ""}
       </div>`,
       { label: item.nombre },

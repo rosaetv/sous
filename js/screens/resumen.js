@@ -15,7 +15,7 @@ export async function renderResumen(view, inicioParam) {
     view.innerHTML = `
       ${back}
       <h1 class="screen-title" style="margin-top: 16px">Resumen</h1>
-      ${emptyState({ emoji: "📝", title: "Aún no hay semanas", text: "Cuando importes un menú y marques tus comidas, aquí estará su resumen." })}`;
+      ${emptyState({ iconName: "notebook-pen", title: "Aún no hay semanas", text: "Cuando importes un menú y marques tus comidas, aquí estará su resumen." })}`;
     return;
   }
 

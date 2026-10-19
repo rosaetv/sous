@@ -10,7 +10,7 @@ import { setCheck } from "./store.js";
 export function batchCardHTML({ semana, i, checks, recetas, open = null }) {
   const b = semana.batch[i];
   const { hechos, total } = progresoBatch(semana.inicio, i, b, checks);
-  const titulo = `🥡 Mealprep${b.cuando ? ` · ${esc(b.cuando)}` : ""}`;
+  const titulo = `${icon("cooking-pot", "icon batch-icon")} Mealprep${b.cuando ? ` · ${esc(b.cuando)}` : ""}`;
   const progreso = progresoTexto(hechos, total);
   const foldable = open !== null;
 

@@ -35,13 +35,13 @@ const RECIPES = [
 ];
 
 function recipeCard(r) {
-  const tags = [`⏱️ ${r.min} min`, r.tupper ? "🥡" : ""].filter(Boolean).join(" · ");
+  const tags = [`<span class="meta-tag">${icon("clock")} ${r.min} min</span>`, r.tupper ? `<span class="meta-tag">${icon("package")} tupper</span>` : ""].join("");
   return `
     <a class="card recipe" href="#/styleguide">
       <div class="recipe-photo" data-cat="${r.cat}"><span class="recipe-emoji" aria-hidden="true">${r.emoji}</span></div>
       <div class="recipe-body">
         <p class="title recipe-name">${esc(r.name)}</p>
-        <p class="recipe-meta">${r.kcal} kcal · ${r.prot} g proteína</p>
+        <p class="recipe-meta">${r.kcal} kcal · ${r.prot} g prot</p>
         <p class="recipe-meta">${tags}</p>
       </div>
     </a>`;
@@ -67,16 +67,16 @@ export function renderStyleguide(view) {
       <div class="swatch" style="background: var(--color-primary); color: var(--color-on-primary)">Principal</div>
       <div class="swatch" style="background: var(--color-accent); color: var(--color-text)">Acento</div>
       <div class="swatch" style="background: var(--color-bg); color: var(--color-text); box-shadow: inset 0 0 0 1px var(--color-border)">Fondo</div>
-      <div class="swatch" style="background: var(--eaten-bg); color: var(--eaten-ink)">✅ Comido</div>
-      <div class="swatch" style="background: var(--swapped-bg); color: var(--swapped-ink)">🔄 Cambiado</div>
-      <div class="swatch" style="background: var(--skipped-bg); color: var(--skipped-ink)">❌ No</div>
+      <div class="swatch" style="background: var(--eaten-bg); color: var(--eaten-ink)">${icon("check")} Comido</div>
+      <div class="swatch" style="background: var(--swapped-bg); color: var(--swapped-ink)">${icon("pencil-line")} Cambiado</div>
+      <div class="swatch" style="background: var(--skipped-bg); color: var(--skipped-ink)">${icon("ban")} No</div>
     </div>
 
     <h2 class="title section-title">Etiquetas del día</h2>
     <div class="tags">
-      <span class="tag tag-blue">🏢 Oficina</span>
-      <span class="tag tag-green">🏋️ Gym</span>
-      <span class="tag tag-peach">🏷️ Otra etiqueta</span>
+      <span class="tag tag-blue">${icon("building-2")} Oficina</span>
+      <span class="tag tag-green">${icon("dumbbell")} Gym</span>
+      <span class="tag tag-peach">${icon("pin")} Otra etiqueta</span>
     </div>
 
     <h2 class="title section-title">Progreso del día</h2>

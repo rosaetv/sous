@@ -14,13 +14,13 @@ function describe(result) {
     const pasos = d.batch.reduce((n, b) => n + b.pasos.length, 0);
     const macros = [...new Set(d.dias.flatMap((dia) => Object.keys(dia.macros || {})))];
     return {
-      emoji: "🗓️",
+      iconName: "calendar-days",
       text: `Menú semanal · ${rangeLabel(d.inicio, d.fin)} · ${d.dias.length} días`,
       detail: [pasos ? `Mealprep: ${pasos} pasos` : "Sin mealprep", macros.length ? `Macros: ${macros.join(", ")}` : "Sin macros"].join(" · "),
     };
   }
-  if (result.tipo === "lista") return { emoji: "🧺", text: `Lista del súper · ${d.items.length} artículos` };
-  return { emoji: "📖", text: `Recetario · ${d.recetas.length} recetas` };
+  if (result.tipo === "lista") return { iconName: "shopping-basket", text: `Lista del súper · ${d.items.length} artículos` };
+  return { iconName: "chef-hat", text: `Recetario · ${d.recetas.length} recetas` };
 }
 
 function statusHTML(result) {
@@ -39,10 +39,10 @@ function statusHTML(result) {
         <button class="btn btn-secondary btn-block" data-action="copy-errors">${icon("copy")} Copiar errores para Claude</button>
       </section>`;
   }
-  const { emoji, text, detail = "" } = describe(result);
+  const { iconName, text, detail = "" } = describe(result);
   return `
     <section class="card import-ok">
-      <span class="import-emoji" aria-hidden="true">${emoji}</span>
+      <span class="import-icon">${icon(iconName)}</span>
       <div>
         <p class="title">${esc(text)}</p>
         <p class="small muted">${detail ? `${esc(detail)}<br>` : ""}Listo para importar</p>
@@ -54,7 +54,7 @@ function statusHTML(result) {
 function successHTML(summary) {
   return `
     <section class="card empty import-done">
-      <span class="empty-emoji" aria-hidden="true">✅</span>
+      <span class="empty-icon">${icon("circle-check")}</span>
       <h2 class="title">${esc(summary.title)}</h2>
       <p>${esc(summary.detail)}</p>
       <a class="btn btn-primary btn-block" href="${summary.go.href}">${esc(summary.go.label)}</a>

@@ -27,19 +27,20 @@ export function matchesSearch(receta, query) {
   return q.split(/\s+/).every((word) => haystack.includes(word));
 }
 
+// Minutos, tupper y hierro, con íconos de Lucide.
 function tagsLine(r) {
   return [
-    r.tiempoActivoMin != null && `⏱️ ${r.tiempoActivoMin} min`,
-    r.tupper && "🥡 tupper",
-    r.hierro && "🩸 hierro",
+    r.tiempoActivoMin != null && `<span class="meta-tag">${icon("clock")} ${r.tiempoActivoMin} min</span>`,
+    r.tupper && `<span class="meta-tag">${icon("package")} tupper</span>`,
+    r.hierro && `<span class="meta-tag">${icon("droplet")} hierro</span>`,
   ]
     .filter(Boolean)
-    .join(" · ");
+    .join("");
 }
 
 function macrosLine(r) {
   if (!r.macros) return "";
-  return [r.macros.kcal != null && `${r.macros.kcal} kcal`, r.macros.prot != null && `${r.macros.prot} g proteína`].filter(Boolean).join(" · ");
+  return [r.macros.kcal != null && `${r.macros.kcal} kcal`, r.macros.prot != null && `${r.macros.prot} g prot`].filter(Boolean).join(" · ");
 }
 
 // URLs temporales de las fotos guardadas; se liberan al salir de la pantalla.
@@ -74,7 +75,7 @@ export async function renderRecetas(view, id) {
     view.innerHTML = `
       <h1 class="screen-title">Recetas</h1>
       ${emptyState({
-        emoji: "🥑",
+        iconName: "chef-hat",
         title: "Aún no hay recetario",
         text: "Pega el recetario que te dio Claude. Después podrás ponerle tus fotos.",
         action: `<a class="btn btn-primary" href="#/importar">${icon("clipboard-paste")} Importar recetario</a>`,
@@ -153,8 +154,8 @@ function historyHTML(h) {
   const resumen = [
     h.comida && `Comida ${h.comida === 1 ? "1 vez" : `${h.comida} veces`}`,
     h.cambiada && `${h.cambiada} ${h.cambiada === 1 ? "vez cambiada o no comida" : "veces cambiada o no comida"}`,
-    h.up && `👍 ${h.up}`,
-    h.down && `👎 ${h.down}`,
+    h.up && `<span class="meta-tag">${icon("thumbs-up")} ${h.up}</span>`,
+    h.down && `<span class="meta-tag">${icon("thumbs-down")} ${h.down}</span>`,
   ].filter(Boolean);
   return `
     <h2 class="title section-title">Tu historial</h2>
@@ -164,7 +165,7 @@ function historyHTML(h) {
         h.notas.length
           ? `<ul>${h.notas
               .slice(0, 5)
-              .map((n) => `<li><span class="muted">${esc(shortDay(n.fecha))}</span> ${n.valoracion === "up" ? "👍 " : n.valoracion === "down" ? "👎 " : ""}“${esc(n.nota)}”</li>`)
+              .map((n) => `<li><span class="muted">${esc(shortDay(n.fecha))}</span> ${n.valoracion === "up" ? icon("thumbs-up", "icon inline-icon") : n.valoracion === "down" ? icon("thumbs-down", "icon inline-icon") : ""}“${esc(n.nota)}”</li>`)
               .join("")}</ul>`
           : ""
       }
@@ -176,7 +177,7 @@ async function renderDetalle(view, id) {
   if (!receta) {
     view.innerHTML = `
       <a class="icon-btn" href="#/recetas" aria-label="Volver">${icon("chevron-left")}</a>
-      ${emptyState({ emoji: "🔎", title: "No encontré esta receta", text: "Puede que no esté en el recetario que importaste." })}`;
+      ${emptyState({ iconName: "search-x", title: "No encontré esta receta", text: "Puede que no esté en el recetario que importaste." })}`;
     return;
   }
 

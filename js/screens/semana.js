@@ -12,7 +12,7 @@ import { swapLabel } from "../logic/cambios.js";
 import { batchCardHTML, toggleBatchCheck } from "../batch-card.js";
 import { progresoBatch, fechaDelBatch } from "../logic/batch.js";
 
-const STATE_ICON = { comido: "check", cambiado: "refresh-cw", no: "x" };
+const STATE_ICON = { comido: "check", cambiado: "pencil-line", no: "ban" };
 const MACROS = MACROS_PANTALLA;
 
 function dot(estado) {
@@ -40,7 +40,7 @@ export async function renderSemana(view, inicioParam) {
     view.innerHTML = `
       <h1 class="screen-title">Semana</h1>
       ${emptyState({
-        emoji: "🗓️",
+        iconName: "calendar-days",
         title: "Aún no hay menú",
         text: "Pega el menú que te dio Claude y aquí verás los 7 días, los macros y el batch.",
         action: `<a class="btn btn-primary" href="#/importar">${icon("clipboard-paste")} Importar menú</a>`,
@@ -94,8 +94,8 @@ export async function renderSemana(view, inicioParam) {
           <span class="day-head-text">
             <span class="day-name">${esc(shortDay(plan.fecha))}${plan.fecha === today ? ` <span class="today-badge">Hoy</span>` : ""}</span>
             <span class="day-meta">
-              ${plan.etiquetas.map((t) => `<span title="${esc(etiquetaInfo(t).label)}">${etiquetaInfo(t).emoji}</span>`).join("")}
-              ${batchDay.includes(plan.fecha) ? `<span title="Mealprep">🥡</span>` : ""}
+              ${plan.etiquetas.map((t) => `<span title="${esc(etiquetaInfo(t).label)}">${icon(etiquetaInfo(t).icon)}</span>`).join("")}
+              ${batchDay.includes(plan.fecha) ? `<span title="Mealprep">${icon("cooking-pot")}</span>` : ""}
               ${swapped ? `<span class="day-swapped">${icon("arrow-left-right")} menú del ${esc(shortDay(plan.origen))}</span>` : ""}
             </span>
           </span>
@@ -169,7 +169,8 @@ export async function renderSemana(view, inicioParam) {
             .map(([estado, n]) => `<span data-state="${estado}" style="flex: ${n}"></span>`)
             .join("")}
         </div>
-        <p class="small muted">${marked} de ${meals} comidas marcadas · ✅ ${totals.comido} · 🔄 ${totals.cambiado} · ❌ ${totals.no}</p>
+        <p class="small muted">${marked} de ${meals} comidas marcadas</p>
+        <p class="week-counts"><span class="meta-tag is-eaten">${icon("check")} ${totals.comido}</span><span class="meta-tag is-swapped">${icon("pencil-line")} ${totals.cambiado}</span><span class="meta-tag is-skipped">${icon("ban")} ${totals.no}</span></p>
       </div>
 
       <div class="stack days">${all.map(dayHTML).join("")}${batchCards(null)}</div>

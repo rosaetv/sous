@@ -18,12 +18,12 @@ export const CATEGORIAS = [
   { id: "sazon", label: "Sazones", alias: ["sazones"] },
 ];
 
-// Macros en pantalla, con los nombres de Health (la clave es cómo se guardan).
+// Macros en pantalla, abreviados para que quepan (la clave es cómo se guardan).
 export const MACROS_PANTALLA = [
   ["kcal", "kcal"],
-  ["prot", "proteína"],
-  ["carb", "carbohid."],
-  ["grasa", "grasas"],
+  ["prot", "prot"],
+  ["carb", "carb"],
+  ["grasa", "grasa"],
   ["fibra", "fibra"],
 ];
 
@@ -49,12 +49,12 @@ export const momentoLabel = (id) => MOMENTOS.find((m) => m.id === id)?.label || 
 // ---------- Etiquetas del día ----------
 // El código solo conoce oficina y gym; cualquier otra etiqueta del JSON se muestra tal cual.
 const ETIQUETAS = {
-  oficina: { emoji: "🏢", label: "Oficina", tone: "blue" },
-  gym: { emoji: "🏋️", label: "Gym", tone: "green" },
+  oficina: { icon: "building-2", label: "Oficina", tone: "blue" },
+  gym: { icon: "dumbbell", label: "Gym", tone: "green" },
 };
 
 export function etiquetaInfo(tag) {
-  return ETIQUETAS[tag] || { emoji: "📌", label: tag.charAt(0).toUpperCase() + tag.slice(1), tone: "peach" };
+  return ETIQUETAS[tag] || { icon: "pin", label: tag.charAt(0).toUpperCase() + tag.slice(1), tone: "peach" };
 }
 
 // Notas fijas que tocan hoy: las generales, más las que mencionan una etiqueta de hoy.
