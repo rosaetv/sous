@@ -2,10 +2,12 @@
 
 import { esc, icon, emptyState, openSheet, toast } from "../ui.js";
 import { todayISO, fromISO, shortDay, addDays } from "../logic/fechas.js";
-import { notasDeHoy } from "../logic/menu.js";
+import { notasDeHoy, momentoLabel } from "../logic/menu.js";
+import { partsOf, reservaDelDia, agregadosA } from "../logic/reserva.js";
 import { mealCardHTML, tagsHTML } from "../meal-card.js";
 import { editableFrom, diffMeal, hasChanges } from "../logic/cambios.js";
 import { weekFor, dayPlan, marksFor, setMark, clearMark, updateMark, swapDays, recipeIds, recipesById, checksWithPrefix } from "../store.js";
+import { checkParte, checkAllPartes, movidosDe, moverDeReserva } from "../store.js";
 import { swapTargets, chooseAndSwap } from "../swap-day.js";
 import { batchCardHTML, toggleBatchCheck } from "../batch-card.js";
 import { fechaDelBatch, progresoBatch } from "../logic/batch.js";
@@ -90,7 +92,10 @@ export async function renderHoy(view, fechaParam) {
   }
 
   const [marks, recetas] = await Promise.all([marksFor(fecha), recipeIds()]);
+  let movidos = await movidosDe(fecha); // lo que pasó de la reserva a otra comida (solo este día)
   const open = new Set(); // comidas marcadas con los ingredientes abiertos
+  const partesOpen = new Set(); // comidas con "Por partes" abierto (se quedan arriba mientras palomeas)
+  let reservaOpen = false;
   const etiquetasSemana = [...new Set(semana.dias.flatMap((d) => d.etiquetas))];
   const notas = notasDeHoy(semana.notasFijas, plan.etiquetas, etiquetasSemana);
 
@@ -103,7 +108,72 @@ export async function renderHoy(view, fechaParam) {
     : [new Set(), new Map()];
 
   const card = (comida) =>
-    mealCardHTML(comida, marks[comida.momento], { hasRecipe: comida.recetaId && recetas.has(comida.recetaId), open: open.has(comida.momento) });
+    mealCardHTML(comida, marks[comida.momento], {
+      hasRecipe: comida.recetaId && recetas.has(comida.recetaId),
+      open: open.has(comida.momento),
+      parts: partsOf(comida, marks[comida.momento], movidos),
+      agregados: agregadosA(comida.momento, plan.comidas, movidos),
+      partesOpen: partesOpen.has(comida.momento),
+    });
+
+  // Reserva del día, plegada en una línea: lo que no comiste de una comida por partes.
+  function reservaHTML() {
+    const items = reservaDelDia(plan.comidas, marks, movidos);
+    if (!items.length) return "";
+    return `
+      <section class="reserva-box">
+        <button class="notes-toggle" data-action="reserva" aria-expanded="${reservaOpen}">
+          <span aria-hidden="true">🧺</span><span class="grow">${items.length === 1 ? "1 cosa en la reserva" : `${items.length} cosas en la reserva`}</span>
+          ${icon(reservaOpen ? "chevron-up" : "chevron-down", "icon chevron")}
+        </button>
+        ${
+          reservaOpen
+            ? `<ul class="reserva-list">${items
+                .map(
+                  (it, i) => `
+              <li>
+                <span class="grow"><span>${esc(it.nombre)}</span><span class="small muted">del ${esc(momentoLabel(it.de).toLowerCase())}</span></span>
+                <button class="btn btn-secondary" data-reserva="${i}">${icon("plus")} Agregar a…</button>
+              </li>`,
+                )
+                .join("")}</ul>`
+            : ""
+        }
+      </section>`;
+  }
+  const refreshReserva = () => (view.querySelector(".reserva-slot").innerHTML = reservaHTML());
+
+  // Agregar algo de la reserva a otra comida del día (cuenta como comido ahí).
+  function addFromReserva(item) {
+    const destinos = plan.comidas.filter((c) => c.momento !== item.de);
+    const { sheet, close } = openSheet(
+      `
+      <h2 class="title sheet-title">¿Con qué comida?</h2>
+      <p class="muted" style="margin-top: 4px">${esc(item.nombre)} se cuenta como comido ahí.</p>
+      <div class="day-options">
+        ${[...destinos.filter((c) => !marks[c.momento]), ...destinos.filter((c) => marks[c.momento])]
+          .map(
+            (c) => `
+          <button class="day-option" data-destino="${c.momento}">
+            <span class="day-option-text"><span>${esc(momentoLabel(c.momento))}</span><span class="small muted">${esc(c.plato)}</span></span>
+            ${icon("chevron-right", "icon chevron")}
+          </button>`,
+          )
+          .join("")}
+      </div>`,
+      { label: "Agregar de la reserva" },
+    );
+    sheet.addEventListener("click", async (e) => {
+      const a = e.target.closest("[data-destino]")?.dataset.destino;
+      if (!a) return;
+      close();
+      movidos = await moverDeReserva(fecha, { nombre: item.nombre, de: item.de, a });
+      refreshReserva();
+      refresh(item.de);
+      refresh(a);
+      toast(`${item.nombre} → ${momentoLabel(a).toLowerCase()}`);
+    });
+  }
 
   // Lo pendiente primero (comidas en orden y luego el mealprep); lo ya marcado baja al final, en el mismo orden.
   function listHTML() {
@@ -112,8 +182,10 @@ export async function renderHoy(view, fechaParam) {
       const { hechos, total } = progresoBatch(semana.inicio, i, semana.batch[i], batchChecks);
       return hechos === total;
     };
-    const pending = [...plan.comidas.filter((c) => !marks[c.momento]).map(card), ...batchHoy.filter((i) => !batchDone(i)).map(batchCard)];
-    const done = [...plan.comidas.filter((c) => marks[c.momento]).map(card), ...batchHoy.filter(batchDone).map(batchCard)];
+    // Mientras palomeas por partes, la comida se queda arriba aunque ya cuente como comida.
+    const isDone = (c) => marks[c.momento] && !partesOpen.has(c.momento);
+    const pending = [...plan.comidas.filter((c) => !isDone(c)).map(card), ...batchHoy.filter((i) => !batchDone(i)).map(batchCard)];
+    const done = [...plan.comidas.filter(isDone).map(card), ...batchHoy.filter(batchDone).map(batchCard)];
     return `
       ${pending.length ? `<div class="stack meals">${pending.join("")}</div>` : ""}
       ${done.length ? `${pending.length ? `<p class="done-label">Ya marcado</p>` : ""}<div class="stack meals">${done.join("")}</div>` : ""}`;
@@ -141,6 +213,7 @@ export async function renderHoy(view, fechaParam) {
     ${notas.length ? `<section class="day-notes-box">${notesHTML(notas)}</section>` : ""}
     <div class="day-progress">${progressHTML(plan.comidas, marks)}</div>
     ${macrosLine(plan.macros)}
+    <div class="reserva-slot">${reservaHTML()}</div>
     <div class="day-list">${listHTML()}</div>
     ${
       swapOptions.length
@@ -256,6 +329,13 @@ export async function renderHoy(view, fechaParam) {
 
     if (comida && markBtn) {
       const estado = markBtn.dataset.mark;
+      if (estado === "comido" && marks[comida.momento]?.partes) {
+        // Comida por partes: "Comido" = me comí todo lo que quedaba. Lo palomeado no se despalomea.
+        marks[comida.momento] = await checkAllPartes(fecha, comida, movidos);
+        refresh(comida.momento, { animate: true });
+        refreshReserva();
+        return;
+      }
       if (marks[comida.momento]?.estado === estado) {
         // Tocar el botón ya elegido lo desmarca.
         delete marks[comida.momento];
@@ -267,6 +347,34 @@ export async function renderHoy(view, fechaParam) {
       } else {
         mark(comida, estado);
       }
+      return;
+    }
+
+    if (comida && action === "partes") {
+      const wasOpen = partesOpen.has(comida.momento);
+      wasOpen ? partesOpen.delete(comida.momento) : partesOpen.add(comida.momento);
+      refresh(comida.momento);
+      if (wasOpen) scheduleReorder(); // al cerrar, si ya cuenta como comida, baja con lo marcado
+      return;
+    }
+
+    const parte = event.target.closest("[data-parte]");
+    if (comida && parte) {
+      marks[comida.momento] = await checkParte(fecha, comida, parte.dataset.parte);
+      refresh(comida.momento);
+      refreshReserva();
+      return;
+    }
+
+    if (action === "reserva") {
+      reservaOpen = !reservaOpen;
+      refreshReserva();
+      return;
+    }
+
+    const fromReserva = event.target.closest("[data-reserva]");
+    if (fromReserva) {
+      addFromReserva(reservaDelDia(plan.comidas, marks, movidos)[Number(fromReserva.dataset.reserva)]);
       return;
     }
 

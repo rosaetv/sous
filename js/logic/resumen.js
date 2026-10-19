@@ -4,10 +4,12 @@ import { shortDay, rangeLabel } from "./fechas.js";
 import { momentoLabel } from "./menu.js";
 import { itemState } from "./super.js";
 import { swapLabel } from "./cambios.js";
+import { describePartes } from "./reserva.js";
 
 // semana: la semana importada (con intercambios). plans: dayPlan de cada día.
 // marks: lista de marcas de la semana. lista + listChecks (Map id → valor): la lista del súper, si hay.
-export function buildSummary({ semana, plans, marks, lista = null, listChecks = new Map() }) {
+// movidos: { fecha: [{ nombre, de, a }] }, lo que pasó de la reserva a otra comida.
+export function buildSummary({ semana, plans, marks, lista = null, listChecks = new Map(), movidos = {} }) {
   const byKey = new Map(marks.map((m) => [`${m.fecha}|${m.momento}`, m]));
   const lines = [`## Resumen semana ${rangeLabel(semana.inicio, semana.fin)}`, ""];
 
@@ -26,6 +28,9 @@ export function buildSummary({ semana, plans, marks, lista = null, listChecks = 
       const where = `${shortDay(plan.fecha)} · ${momentoLabel(comida.momento)} · ${plato}`;
       const nota = mark.nota ? ` — "${mark.nota}"` : "";
       if (mark.estado === "cambiado") cambios.push(`- ${where} → 🔄 ${swapLabel(comida, mark)}${nota}`);
+      // Por partes: lo que no comiste con esa comida y dónde terminó.
+      const partes = mark.estado === "comido" ? describePartes(comida, mark, movidos[plan.fecha] || []) : "";
+      if (partes) cambios.push(`- ${where} → ✅ por partes: ${partes}${nota}`);
       if (mark.estado === "no") cambios.push(`- ${where} → ❌ No${nota}`);
       // Lo que valoras es lo que comiste: si cambiaste el plato, el nuevo.
       const nombre = mark.estado === "cambiado" ? mark.comio?.plato || mark.sustituto || "Otra cosa" : plato;

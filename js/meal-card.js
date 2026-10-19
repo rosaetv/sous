@@ -43,11 +43,41 @@ function editedIngredientsHTML(comida, comio) {
   return all.length ? `<ul class="meal-ingredients">${all.join("")}</ul>` : "";
 }
 
+// "Por partes": cada ingrediente con su casilla. Lo palomeado no se puede despalomear;
+// lo movido dice a qué comida fue; lo demás está en la reserva del día.
+function partesHTML(comida, parts) {
+  const rows = (parts || comida.ingredientes.map((i) => ({ ...i, estado: "" })))
+    .map((p) => {
+      const done = p.estado === "comido" || p.estado === "movido";
+      return `
+        <li>
+          <button class="check-row" ${done ? "disabled" : `data-parte="${esc(p.nombre)}"`} aria-pressed="${p.estado === "comido"}" data-parte-state="${p.estado}">
+            <span class="checkbox">${icon(p.estado === "movido" ? "arrow-right" : "check")}</span>
+            <span class="item-text">
+              <span class="item-name">${esc(p.nombre)}</span>
+              <span class="item-meta">${p.estado === "movido" ? `Lo comiste en ${esc(momentoLabel(p.a).toLowerCase())}` : p.estado === "reserva" ? "En la reserva" : esc(formatQty(p.cantidad, p.unidad))}</span>
+            </span>
+          </button>
+        </li>`;
+    })
+    .join("");
+  return `
+    <div class="partes">
+      <p class="small muted">Palomea lo que comiste. Lo que no, queda en la reserva del día para comerlo en otro momento.</p>
+      <ul class="checklist">${rows}</ul>
+    </div>`;
+}
+
 // comida: del menú. mark: la marca guardada (o undefined).
 // open: si una comida ya marcada muestra sus ingredientes (marcadas se pliegan para que lo pendiente destaque).
-export function mealCardHTML(comida, mark, { hasRecipe = false, open = false } = {}) {
+// parts: estado de cada ingrediente si se marcó por partes (logic/reserva.js). agregados: lo que llegó de la reserva.
+// partesOpen: si se ve la lista "Por partes" (plegada por defecto).
+export function mealCardHTML(comida, mark, { hasRecipe = false, open = false, parts = null, agregados = [], partesOpen = false } = {}) {
   const estado = mark?.estado || "";
   const folded = estado && !open;
+  const enReserva = parts ? parts.filter((p) => p.estado === "reserva").length : 0;
+  const comidos = parts ? parts.filter((p) => p.estado === "comido").length : 0;
+  const canParts = comida.ingredientes.length > 1 && estado !== "cambiado";
 
   return `
     <article class="card meal" data-momento="${comida.momento}" ${estado ? `data-state="${estado}"` : ""}>
@@ -57,6 +87,8 @@ export function mealCardHTML(comida, mark, { hasRecipe = false, open = false } =
       </div>
       <h3 class="title meal-name">${esc(comida.plato)}</h3>
       ${estado === "cambiado" ? `<p class="meal-swap">🔄 ${mark.comio ? "" : "Comiste: "}${esc(swapLabel(comida, mark))}</p>` : ""}
+      ${parts ? `<p class="meal-parts">Por partes · ${comidos} de ${parts.length}${enReserva ? ` · ${enReserva} en la reserva` : ""}</p>` : ""}
+      ${agregados.length ? `<p class="meal-extra">${agregados.map((a) => `+ ${esc(a.nombre)} (de ${esc(momentoLabel(a.de).toLowerCase())})`).join(" · ")}</p>` : ""}
 
       ${
         folded
@@ -76,13 +108,20 @@ export function mealCardHTML(comida, mark, { hasRecipe = false, open = false } =
       }
 
       <div class="marks">
-        ${MARKS.map(
+        ${MARKS.filter((m) => !(parts && m.id === "no")).map(
           (m) => `
           <button class="mark" data-mark="${m.id}" aria-pressed="${estado === m.id}">
             <span class="mark-emoji" aria-hidden="true">${m.emoji}</span>${m.label}
           </button>`,
         ).join("")}
       </div>
+
+      ${
+        canParts
+          ? `<button class="meal-toggle" data-action="partes" aria-expanded="${partesOpen}">${icon(partesOpen ? "chevron-up" : "list-checks")} ${partesOpen ? "Cerrar por partes" : "Por partes"}</button>
+             ${partesOpen ? partesHTML(comida, parts) : ""}`
+          : ""
+      }
 
       ${
         estado
