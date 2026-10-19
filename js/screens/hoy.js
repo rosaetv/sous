@@ -6,7 +6,8 @@ import { notasDeHoy, momentoLabel } from "../logic/menu.js";
 import { mealCardHTML, tagsHTML } from "../meal-card.js";
 import { editableFrom, diffMeal, hasChanges, sameName } from "../logic/cambios.js";
 import { reservaDelDia } from "../logic/reserva.js";
-import { weekFor, dayPlan, marksFor, setMark, updateMark, swapDays, recipeIds, recipesById, checksWithPrefix } from "../store.js";
+import { allRecipes } from "../store.js";
+import { weekFor, dayPlan, marksFor, setMark, clearMark, updateMark, swapDays, recipeIds, recipesById, checksWithPrefix } from "../store.js";
 import { swapTargets, chooseAndSwap } from "../swap-day.js";
 import { batchCardHTML, toggleBatchCheck } from "../batch-card.js";
 import { fechaDelBatch, progresoBatch } from "../logic/batch.js";
@@ -143,6 +144,7 @@ export async function renderHoy(view, fechaParam) {
     <div class="day-progress">${progressHTML(plan.comidas, marks)}</div>
     ${macrosLine(plan.macros)}
     <div class="day-list">${listHTML()}</div>
+    <button class="btn btn-ghost btn-block antojo-btn" data-action="antojo">${icon("popcorn")} Tengo antojo</button>
     ${
       swapOptions.length
         ? `<button class="btn btn-ghost btn-block swap-day" data-action="swap-day">${icon("arrow-left-right")} Comer otro menú ${isToday ? "hoy" : "este día"}</button>`
@@ -169,9 +171,65 @@ export async function renderHoy(view, fechaParam) {
     marks[comida.momento] = await setMark(fecha, comida, { estado, sustituto, comio });
   }
 
+  // Antojo ligero: al final del día, discreto (para no tenerlo presente todo el tiempo).
+  // Abre la lista de antojos del recetario; tocar uno abre su receta.
+  async function openAntojos() {
+    const opciones = (await allRecipes()).filter((r) => r.categoria === "antojo");
+    const item = (r) => `
+      <li data-buscar="${esc(`${r.nombre} ${r.ingredientes.map((i) => i.nombre).join(" ")}`.toLowerCase())}">
+        <a class="antojo-name" href="#/receta/${encodeURIComponent(r.id)}">
+          <span class="antojo-emoji" aria-hidden="true">${esc(r.emoji || "🍿")}</span>
+          <span class="grow">
+            <span>${esc(r.nombre)}</span>
+            <span class="small muted">${[r.macros?.kcal != null && `${r.macros.kcal} kcal`, r.tiempoActivoMin != null && `${r.tiempoActivoMin} min`].filter(Boolean).join(" · ")}</span>
+          </span>
+          ${icon("chevron-right", "icon chevron")}
+        </a>
+      </li>`;
+    const { sheet } = openSheet(
+      `
+      <h2 class="title sheet-title">Antojo ligero</h2>
+      <p class="muted" style="margin-top: 4px">Algo rico y ligero de tu recetario.</p>
+      ${
+        opciones.length > 6
+          ? `<label class="search antojo-search">${icon("search")}<span class="sr-only">Buscar</span>
+               <input class="field" type="search" placeholder="Buscar antojo o ingrediente" autocomplete="off" enterkeyhint="search" /></label>`
+          : ""
+      }
+      ${
+        opciones.length
+          ? `<ul class="antojo-list">${opciones.map(item).join("")}</ul>
+             <p class="small muted antojo-empty" hidden>No encontré antojos con eso.</p>`
+          : `<p class="small muted antojo-empty">Aún no tienes antojos en tu recetario. Pídele a Claude que te los agregue (categoría "antojo").</p>`
+      }`,
+      { label: "Antojo ligero" },
+    );
+    // Buscador: filtra por nombre o ingrediente, sin acentos.
+    const plain = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    sheet.querySelector("input[type=search]")?.addEventListener("input", (e) => {
+      const q = plain(e.target.value.trim());
+      let shown = 0;
+      sheet.querySelectorAll(".antojo-list li").forEach((li) => {
+        const ok = !q || plain(li.dataset.buscar).includes(q);
+        li.hidden = !ok;
+        if (ok) shown++;
+      });
+      sheet.querySelector(".antojo-empty").hidden = shown > 0;
+    });
+  }
+
+  // Desmarcar: la comida vuelve a pendiente (y lo que había mandado a la reserva, también).
+  async function unmark(comida) {
+    delete marks[comida.momento];
+    refresh(comida.momento);
+    scheduleReorder();
+    await clearMark(fecha, comida.momento);
+    toast("Desmarcada");
+  }
+
   // "¿Qué comiste?": el menú de esa comida con una casilla por ingrediente.
   // - Palomear = lo comiste; su cantidad se vuelve editable (si comiste de menos, lo que sobró pasa a la reserva).
-  // - Lo no palomeado pasa a la reserva del día. Lo ya guardado como comido no se despalomea.
+  // - Lo no palomeado pasa a la reserva del día. Todo se puede despalomear, y "Desmarcar" deja la comida pendiente.
   // - "De la reserva": lo que sobró de otras comidas de hoy; palomearlo = lo comiste con esta.
   // - "Comí todo" palomea todo; "Me la brinqué" la marca como No (todo a la reserva).
   function editWhatYouAte(comida) {
@@ -182,18 +240,18 @@ export async function renderHoy(view, fechaParam) {
     const menuRows = editableFrom(comida).ingredientes.map((i) => {
       const saved = comio?.ingredientes.find((x) => !x.de && sameName(x.nombre, i.nombre));
       const on = Boolean(yaComido(i.nombre));
-      return { kind: "menu", nombre: i.nombre, base: i.cantidad, cantidad: saved?.cantidad ?? i.cantidad, on, locked: on };
+      return { kind: "menu", nombre: i.nombre, base: i.cantidad, cantidad: saved?.cantidad ?? i.cantidad, on };
     });
-    const extraRows = comio ? diffMeal(comida, comio).agregados.map((x) => ({ kind: "extra", ...x, base: x.cantidad, on: true, locked: true })) : [];
-    const tomadas = (comio?.ingredientes || []).filter((x) => x.de).map((x) => ({ kind: "reserva", ...x, base: x.cantidad, on: true, locked: true }));
+    const extraRows = comio ? diffMeal(comida, comio).agregados.map((x) => ({ kind: "extra", ...x, base: x.cantidad, on: true })) : [];
+    const tomadas = (comio?.ingredientes || []).filter((x) => x.de).map((x) => ({ kind: "reserva", ...x, base: x.cantidad, on: true }));
     const disponibles = reservaDelDia(plan.comidas, marks)
       .pendientes.filter((r) => r.de !== comida.momento)
-      .map((r) => ({ kind: "reserva", nombre: r.nombre, de: r.de, base: r.cantidad, cantidad: r.cantidad, on: false, locked: false }));
+      .map((r) => ({ kind: "reserva", nombre: r.nombre, de: r.de, base: r.cantidad, cantidad: r.cantidad, on: false }));
     const reservaRows = [...tomadas, ...disponibles];
 
     const row = (r) => `
       <li class="eat-row" data-kind="${r.kind}" data-nombre="${esc(r.nombre)}" data-de="${r.de || ""}" data-base="${esc(r.base || "")}">
-        <button type="button" class="eat-check" aria-pressed="${r.on}" ${r.locked ? "disabled" : ""} aria-label="Lo comí">
+        <button type="button" class="eat-check" aria-pressed="${r.on}" aria-label="Lo comí">
           <span class="checkbox">${icon("check")}</span>
         </button>
         ${
@@ -226,6 +284,7 @@ export async function renderHoy(view, fechaParam) {
         <label class="field-label" for="swap-plato">Plato (cámbialo si comiste otra cosa)</label>
         <input class="field" id="swap-plato" name="plato" value="${esc(comio?.plato || comida.plato)}" autocomplete="off" />
         <button class="btn btn-primary btn-block">Guardar</button>
+        ${prev ? `<button type="button" class="btn btn-ghost btn-block" data-unmark>${icon("undo-2")} Desmarcar (queda pendiente)</button>` : ""}
       </form>`,
       { label: "Qué comiste" },
     );
@@ -254,6 +313,11 @@ export async function renderHoy(view, fechaParam) {
         mark(comida, "comido");
         return;
       }
+      if (e.target.closest("[data-unmark]")) {
+        close();
+        unmark(comida);
+        return;
+      }
       if (e.target.closest("[data-skip]")) {
         close();
         mark(comida, "no");
@@ -261,7 +325,7 @@ export async function renderHoy(view, fechaParam) {
       }
       if (e.target.closest("[data-add]")) {
         const list = sheet.querySelector('[data-list="menu"]');
-        list.insertAdjacentHTML("beforeend", row({ kind: "extra", nombre: "", cantidad: "", base: "", on: true, locked: false }));
+        list.insertAdjacentHTML("beforeend", row({ kind: "extra", nombre: "", cantidad: "", base: "", on: true }));
         list.lastElementChild.querySelector("[name=nombre]").focus();
       }
     });
@@ -363,7 +427,8 @@ export async function renderHoy(view, fechaParam) {
       return;
     }
 
-        if (action === "swap-day") return chooseDay();
+        if (action === "antojo") return openAntojos();
+    if (action === "swap-day") return chooseDay();
 
     if (action === "undo-swap") {
       await swapDays(semana.inicio, fecha, plan.origen);

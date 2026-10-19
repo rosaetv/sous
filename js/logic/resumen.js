@@ -8,7 +8,8 @@ import { reservaDelDia, describeReserva } from "./reserva.js";
 
 // semana: la semana importada (con intercambios). plans: dayPlan de cada día.
 // marks: lista de marcas de la semana. lista + listChecks (Map id → valor): la lista del súper, si hay.
-export function buildSummary({ semana, plans, marks, lista = null, listChecks = new Map() }) {
+// borradas: recetas que borraste del recetario de la app esa semana ([{ id, nombre }]).
+export function buildSummary({ semana, plans, marks, lista = null, listChecks = new Map(), borradas = [] }) {
   const byKey = new Map(marks.map((m) => [`${m.fecha}|${m.momento}`, m]));
   const lines = [`## Resumen semana ${rangeLabel(semana.inicio, semana.fin)}`, ""];
 
@@ -64,6 +65,9 @@ export function buildSummary({ semana, plans, marks, lista = null, listChecks = 
     return [...usados, ...sinComer].map((item) => `- ${shortDay(plan.fecha)} · ${describeReserva(item)}`);
   });
   section(lines, "Reserva del día", reserva);
+
+  // ---------- Recetas que borré (para quitarlas también de recetario.md) ----------
+  section(lines, "Recetas que borré del recetario", borradas.map((b) => `- ${b.nombre} (${b.id})`));
 
   // ---------- 👍 / 👎 ----------
   section(lines, "👍 Me gustó", grouped(entries.filter((e) => e.valoracion === "up")));

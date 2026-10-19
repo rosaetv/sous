@@ -5,11 +5,11 @@ import { esc, icon, emptyState, toast, askSheet } from "../ui.js";
 import { CATEGORIAS, MACROS_PANTALLA } from "../logic/menu.js";
 import { ingredientHTML } from "../meal-card.js";
 import { resizeToJpeg } from "../lib/imagen.js";
-import { allRecipes, getRecipe, allPhotos, getPhoto, savePhoto, deletePhoto, cacheRecipeImage, recipeHistory } from "../store.js";
+import { allRecipes, getRecipe, allPhotos, getPhoto, savePhoto, deletePhoto, deleteRecipe, cacheRecipeImage, recipeHistory } from "../store.js";
 import { shortDay } from "../logic/fechas.js";
 
 // Emoji cuando la receta no trae uno.
-const CAT_EMOJI = { comida: "🍲", desayuno: "🍳", colacion: "🍎", modulo: "🧩", sazon: "🧂" };
+const CAT_EMOJI = { comida: "🍲", desayuno: "🍳", colacion: "🍎", modulo: "🧩", sazon: "🧂", antojo: "🍿" };
 
 let filtro = ""; // categoría elegida (se recuerda mientras la app está abierta)
 let busqueda = "";
@@ -242,7 +242,8 @@ async function renderDetalle(view, id) {
           <input type="file" accept="image/*" class="sr-only" data-photo-input />
         </label>
         ${mine ? `<button class="btn btn-ghost btn-block" data-action="remove-photo">Quitar mi foto</button>` : ""}
-      </div>`;
+      </div>
+      <button class="btn btn-ghost btn-block recipe-delete" data-action="delete-recipe">${icon("trash-2")} Borrar receta</button>`;
   }
 
   await render();
@@ -269,6 +270,21 @@ async function renderDetalle(view, id) {
     if (action === "back") {
       if (history.length > 1) history.back();
       else location.hash = "#/recetas";
+    }
+    if (action === "delete-recipe") {
+      const answer = await askSheet({
+        title: `¿Borrar «${r.nombre}»?`,
+        text: "Se borra del recetario de la app, con tu foto. En el resumen para Claude te lo anoto para que la quite también de tu recetario.",
+        actions: [
+          { id: "yes", label: "Borrar receta", style: "primary" },
+          { id: "no", label: "Cancelar", style: "ghost" },
+        ],
+      });
+      if (answer !== "yes") return;
+      await deleteRecipe(r);
+      toast("Receta borrada");
+      location.hash = "#/recetas";
+      return;
     }
     if (action === "remove-photo") {
       const answer = await askSheet({

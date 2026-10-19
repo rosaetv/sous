@@ -8,7 +8,7 @@ import { renderAjustes } from "./screens/ajustes.js";
 import { renderStyleguide } from "./screens/styleguide.js";
 import { renderImportar } from "./screens/importar.js";
 import { renderResumen } from "./screens/resumen.js";
-import { icon } from "./ui.js";
+import { icon, closeSheets } from "./ui.js";
 import { setupPWA } from "./pwa.js";
 
 const view = document.getElementById("view");
@@ -45,7 +45,7 @@ async function route() {
   view.cleanup?.();
   view.cleanup = null;
   view.onclick = view.oninput = view.onchange = view.onkeydown = null;
-  document.querySelectorAll(".sheet-backdrop").forEach((s) => s.remove());
+  closeSheets();
 
   document.querySelectorAll(".tab").forEach((t) => {
     if (t.dataset.tab === tab) t.setAttribute("aria-current", "page");

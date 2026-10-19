@@ -57,6 +57,7 @@
   --cat-colacion: linear-gradient(150deg, #fffaea 0%, #f8e4a8 100%);  /* miel */
   --cat-modulo: linear-gradient(150deg, #f4f2fc 0%, #ddd7f3 100%);    /* lavanda */
   --cat-sazon: linear-gradient(150deg, #fff0ec 0%, #f6cbbd 100%);     /* coral */
+  --cat-antojo: linear-gradient(150deg, #fdf0f6 0%, #f3c6dc 100%);    /* fresa */
 
   /* ---------- Sombras (muy suaves, como flotando) ---------- */
   --shadow-card: 0 1px 2px rgba(31, 35, 40, 0.03), 0 6px 24px rgba(31, 35, 40, 0.05);

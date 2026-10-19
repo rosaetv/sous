@@ -16,6 +16,8 @@ export const CATEGORIAS = [
   { id: "colacion", label: "Colaciones", alias: ["colaciones", "colaciones grab and go", "snack"] },
   { id: "modulo", label: "Módulos", alias: ["modulos", "modulos base"] },
   { id: "sazon", label: "Sazones", alias: ["sazones"] },
+  // Para un día con mucha ansiedad: opciones ligeras y rápidas en lugar de "comerse una vaca".
+  { id: "antojo", label: "Antojos ligeros", alias: ["antojos", "antojo ligero", "antojos ligeros", "snacks ligeros", "ansiedad"] },
 ];
 
 // Macros en pantalla, abreviados para que quepan (la clave es cómo se guardan).

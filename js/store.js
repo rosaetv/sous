@@ -280,6 +280,21 @@ export function deletePhoto(id) {
   return db.delete("fotos", id);
 }
 
+// Borra una receta y su foto. Se anota (con la fecha) para decírselo a Claude en el resumen de esa semana.
+// Si después importas un recetario que la trae, vuelve.
+export async function deleteRecipe(receta) {
+  const borradas = (await db.get("kv", "recetasBorradas")) || [];
+  await db.transaction(["recetas", "fotos", "kv"], (s) => {
+    s.recetas.delete(receta.id);
+    s.fotos.delete(receta.id);
+    s.kv.put([...borradas, { id: receta.id, nombre: receta.nombre, fecha: todayISO() }], "recetasBorradas");
+  });
+}
+
+export async function recetasBorradas() {
+  return (await db.get("kv", "recetasBorradas")) || [];
+}
+
 // Guarda en el teléfono la foto de imagenUrl, para verla sin conexión.
 // Solo si no pusiste una tuya. Si el sitio no deja descargarla, no pasa nada:
 // se sigue viendo con internet (y el modo sin conexión la guarda al verla).
@@ -308,7 +323,8 @@ export async function summaryData(semana) {
   const [marks, lista] = await Promise.all([marksBetween(semana.inicio, semana.fin), db.get("listas", semana.inicio)]);
   const prefix = `${semana.inicio}|super|`;
   const listChecks = new Map([...(await checksMap(prefix))].map(([k, v]) => [k.slice(prefix.length), v]));
-  return { semana, plans, marks, lista: lista || null, listChecks };
+  const borradas = (await recetasBorradas()).filter((b) => b.fecha >= semana.inicio && b.fecha <= semana.fin);
+  return { semana, plans, marks, lista: lista || null, listChecks, borradas };
 }
 
 // ---------- Borrar una semana ----------

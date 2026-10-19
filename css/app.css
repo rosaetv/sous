@@ -617,7 +617,7 @@ ul {
 }
 
 .day-list {
-  margin-top: var(--space-5);
+  margin-top: var(--space-4);
 }
 
 /* Separador entre lo pendiente y lo ya marcado */
@@ -1065,6 +1065,75 @@ ul {
   width: 16px;
   height: 16px;
   margin-top: 2px;
+}
+
+/* ---------- Antojo ligero ---------- */
+
+.antojo-btn {
+  margin-top: var(--space-5);
+  color: var(--color-text-muted);
+}
+
+.antojo-btn + .swap-day {
+  margin-top: 0;
+}
+
+.antojo-btn .icon {
+  color: #d9659a;
+}
+
+.antojo-search {
+  margin-top: var(--space-4);
+}
+
+.antojo-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-3);
+}
+
+.antojo-list li {
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.antojo-list li:last-child {
+  border-bottom: 0;
+}
+
+.antojo-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 60px;
+  padding: var(--space-2) 0;
+  text-decoration: none;
+}
+
+.antojo-name .grow {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.antojo-name .chevron {
+  color: var(--color-text-faint);
+}
+
+.antojo-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--cat-antojo);
+  font-size: 22px;
+}
+
+.antojo-empty {
+  margin-top: var(--space-4);
 }
 
 /* ---------- Hoja "¿Qué comiste?" ---------- */
@@ -1572,6 +1641,7 @@ textarea.field {
 .recipe-photo[data-cat="colacion"] { background-image: var(--cat-colacion); }
 .recipe-photo[data-cat="modulo"] { background-image: var(--cat-modulo); }
 .recipe-photo[data-cat="sazon"] { background-image: var(--cat-sazon); }
+.recipe-photo[data-cat="antojo"] { background-image: var(--cat-antojo); }
 
 .recipe-body {
   display: flex;
@@ -1759,6 +1829,11 @@ textarea.field {
   cursor: pointer;
 }
 
+.recipe-delete {
+  margin-top: var(--space-5);
+  color: var(--skipped-ink);
+}
+
 /* ---------- Hoja que sube desde abajo ---------- */
 
 .sheet-backdrop {
@@ -1777,6 +1852,9 @@ textarea.field {
   max-width: 520px;
   max-height: 92dvh;
   overflow-y: auto;
+  overscroll-behavior: contain; /* el scroll de la hoja no pasa al fondo */
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  touch-action: pan-y;
   padding: var(--space-3) var(--page-gutter) calc(var(--space-5) + env(safe-area-inset-bottom));
   background: var(--color-surface);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
@@ -1784,7 +1862,20 @@ textarea.field {
   animation: slide-up var(--transition-soft);
 }
 
+.sheet-backdrop.is-closing {
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+
+/* El asa: más área para agarrarla con el dedo */
+.sheet-handle::before {
+  content: "";
+  position: absolute;
+  inset: -14px -60px;
+}
+
 .sheet-handle {
+  position: relative;
   width: 40px;
   height: 5px;
   margin: 0 auto var(--space-4);
