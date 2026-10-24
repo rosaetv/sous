@@ -10,7 +10,7 @@ import { allRecipes, allWeeks } from "../store.js";
 import { weekFor, dayPlan, marksFor, setMark, clearMark, updateMark, swapDays, recipeIds, recipesById, checksWithPrefix } from "../store.js";
 import { swapTargets, chooseAndSwap } from "../swap-day.js";
 import { batchCardHTML, toggleBatchCheck } from "../batch-card.js";
-import { bloquesDelDia, progresoBatch } from "../logic/batch.js";
+import { bloquesDelDia } from "../logic/batch.js";
 
 function longDate(fecha) {
   const text = fromISO(fecha).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" });
@@ -111,7 +111,7 @@ export async function renderHoy(view, fechaParam) {
 
   const swapOptions = swapTargets(semana, fecha, today);
 
-  // El mealprep que toca este día (si "cuando" nombra el día de la semana), después de la cena.
+  // El mealprep que toca este día va arriba, debajo de las notas, plegado (se abre al tocarlo).
   // Puede venir de otro menú: el batch del domingo anterior al lunes de la semana siguiente.
   const batchHoy = bloquesDelDia(await allWeeks(), fecha);
   const batchWeeks = [...new Set(batchHoy.map((b) => b.semana))];
@@ -122,19 +122,29 @@ export async function renderHoy(view, fechaParam) {
       ])
     : [new Set(), new Map()];
 
+  const batchOpen = new Set(); // bloques abiertos, por "inicio|i"
+  function prepHTML() {
+    return batchHoy
+      .map(({ semana: w, i }) =>
+        batchCardHTML({
+          semana: w,
+          i,
+          checks: batchChecks,
+          recetas: recetasMap,
+          open: batchOpen.has(`${w.inicio}|${i}`),
+          antes: w !== semana ? `Para el menú del ${rangeLabel(w.inicio, w.fin)}` : "",
+        })
+      )
+      .join("");
+  }
+
   const card = (comida) =>
     mealCardHTML(comida, marks[comida.momento], { hasRecipe: comida.recetaId && recetas.has(comida.recetaId), open: open.has(comida.momento) });
 
-  // Lo pendiente primero (comidas en orden y luego el mealprep); lo ya marcado baja al final, en el mismo orden.
+  // Lo pendiente primero (comidas en orden); lo ya marcado baja al final, en el mismo orden.
   function listHTML() {
-    const batchCard = ({ semana: w, i }) =>
-      batchCardHTML({ semana: w, i, checks: batchChecks, recetas: recetasMap, antes: w !== semana ? `Para el menú del ${rangeLabel(w.inicio, w.fin)}` : "" });
-    const batchDone = ({ semana: w, i }) => {
-      const { hechos, total } = progresoBatch(w.inicio, i, w.batch[i], batchChecks);
-      return hechos === total;
-    };
-    const pending = [...plan.comidas.filter((c) => !marks[c.momento]).map(card), ...batchHoy.filter((i) => !batchDone(i)).map(batchCard)];
-    const done = [...plan.comidas.filter((c) => marks[c.momento]).map(card), ...batchHoy.filter(batchDone).map(batchCard)];
+    const pending = plan.comidas.filter((c) => !marks[c.momento]).map(card);
+    const done = plan.comidas.filter((c) => marks[c.momento]).map(card);
     return `
       ${pending.length ? `<div class="stack meals">${pending.join("")}</div>` : ""}
       ${done.length ? `${pending.length ? `<p class="done-label">Ya marcado</p>` : ""}<div class="stack meals">${done.join("")}</div>` : ""}`;
@@ -160,6 +170,7 @@ export async function renderHoy(view, fechaParam) {
     }
     ${tagsHTML(plan.etiquetas)}
     ${notas.length ? `<section class="day-notes-box">${notesHTML(notas)}</section>` : ""}
+    ${batchHoy.length ? `<div class="stack day-prep">${prepHTML()}</div>` : ""}
     <div class="day-progress">${progressHTML(plan.comidas, marks)}</div>
     ${macrosLine(plan.macros)}
     <div class="day-list">${listHTML()}</div>
@@ -411,7 +422,7 @@ export async function renderHoy(view, fechaParam) {
   };
 
   view.onclick = async (event) => {
-    if (await toggleBatchCheck(event, batchWeeks, batchChecks)) return scheduleReorder();
+    if (await toggleBatchCheck(event, batchWeeks, batchChecks)) return;
     const cardEl = event.target.closest(".meal");
     const comida = cardEl && plan.comidas.find((c) => c.momento === cardEl.dataset.momento);
     const likeBtn = event.target.closest("[data-like]");
@@ -435,6 +446,14 @@ export async function renderHoy(view, fechaParam) {
 
     // Tocar la tarjeta (fuera de sus botones y enlaces) abre "¿Qué comiste?".
     if (comida && !event.target.closest("a, button, input")) return editWhatYouAte(comida);
+
+    if (action === "batch-toggle") {
+      const cardEl = event.target.closest("[data-batch]");
+      const key = `${cardEl.dataset.inicio}|${cardEl.dataset.batch}`;
+      batchOpen.has(key) ? batchOpen.delete(key) : batchOpen.add(key);
+      view.querySelector(".day-prep").innerHTML = prepHTML();
+      return;
+    }
 
     if (action === "notes") {
       try {

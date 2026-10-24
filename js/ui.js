@@ -7,10 +7,11 @@ export function esc(text = "") {
 // Ícono de Lucide por su nombre en lucide.dev (por ejemplo "sun", "chef-hat").
 export function icon(name, className = "icon") {
   const pascal = name.replace(/(^|-)(\w)/g, (_, __, c) => c.toUpperCase());
-  // Formato de Lucide: ["svg", atributos, [[etiqueta, atributos], ...]]
+  // Formato de Lucide: [[etiqueta, atributos], ...] (versiones nuevas)
+  // o ["svg", atributos, [[etiqueta, atributos], ...]] (versiones viejas).
   const node = window.lucide?.icons?.[pascal];
   if (!node) return "";
-  const children = node[2]
+  const children = (Array.isArray(node[0]) ? node : node[2])
     .map(([tag, attrs]) => `<${tag} ${Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(" ")}/>`)
     .join("");
   return `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${children}</svg>`;

@@ -44,6 +44,14 @@
   --swapped-bg: #fff3d9;  --swapped-ink: #875400;  --swapped-dot: #f2b441;  /* 🔄 Cambiado */
   --skipped-bg: #eef0f2;  --skipped-ink: #4b5157;  --skipped-dot: #a3a8ae;  /* ❌ No */
 
+  /* ---------- Mealprep (petróleo, para ubicarlo de un vistazo) ----------
+     Solo cambia lo que antes era verde; los textos siguen en el neutro oscuro.
+     Contraste sobre el fondo: texto 13,5:1, secundario 5,3:1, petróleo 5,2:1 (check blanco 6,1:1). */
+  --prep-bg: #dff0f6;
+  --prep-accent: #0e6b85;           /* ícono, "Antes de empezar", barra, casilla y casilla palomeada */
+  --prep-muted: #575d64;            /* texto secundario: el gris normal no llega a 4,5:1 sobre este fondo */
+  --prep-line: rgba(11, 70, 88, 0.14); /* separadores y fondo de la barra */
+
   /* ---------- Etiquetas (pastilla pastel con texto oscuro) ---------- */
   --tag-green-bg: #eaf5e2;  --tag-green-ink: #2f6b1f;
   --tag-blue-bg: #e8f1fa;   --tag-blue-ink: #2c5f8a;

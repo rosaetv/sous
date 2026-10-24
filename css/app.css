@@ -316,6 +316,16 @@ ul {
   margin-top: var(--space-3);
 }
 
+/* Mealprep del día: arriba, debajo de las notas, plegado */
+.day-prep {
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.tags + .day-prep {
+  margin-top: var(--space-3);
+}
+
 .notes-toggle {
   display: flex;
   align-items: center;
@@ -663,6 +673,55 @@ ul {
   min-height: 48px;
   padding: 0 var(--space-3);
   font-size: var(--font-size-sm);
+}
+
+/* ---------- Mealprep en petróleo (gana sobre los estilos generales de tarjeta y checklist) ---------- */
+
+.card.batch,
+.day-body .batch {
+  background: var(--prep-bg);
+  box-shadow: none;
+}
+
+.card.batch .batch-icon,
+.card.batch .batch-before {
+  color: var(--prep-accent);
+}
+
+.card.batch .batch-progress,
+.card.batch .small.muted,
+.card.batch .batch-head .chevron,
+.card.batch .batch-step-link .chevron,
+.card.batch .check-row[aria-pressed="true"] > span:last-child,
+.card.batch .batch-step-text .is-done {
+  color: var(--prep-muted);
+}
+
+.card.batch .batch-bar {
+  background: var(--prep-line);
+}
+
+.card.batch .batch-bar span {
+  background: var(--prep-accent);
+}
+
+.card.batch .check-row,
+.card.batch .batch-step {
+  border-color: var(--prep-line);
+}
+
+.card.batch .checkbox {
+  box-shadow: inset 0 0 0 1.5px var(--prep-accent);
+}
+
+.card.batch .check-row[aria-pressed="true"] .checkbox {
+  background: var(--prep-accent);
+  color: #fff;
+}
+
+/* El ícono de mealprep en la cabecera de cada día de Semana, también en petróleo */
+.day-meta [title="Mealprep"] {
+  color: var(--prep-accent);
 }
 
 /* ---------- Checklist (batch y súper) ---------- */

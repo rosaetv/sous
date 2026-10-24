@@ -60,8 +60,20 @@ const ETIQUETAS = {
   gym: { icon: "dumbbell", label: "Gym", tone: "green" },
 };
 
+// Ícono para otras etiquetas comunes (el texto se muestra tal cual viene en el JSON).
+// Se busca por palabra, sin acentos ni mayúsculas: "Club de craft (tarde)" lleva el carrete.
+const ICONOS_ETIQUETA = [
+  [/\bcasa\b/, "house"],
+  [/comida fuera|comer fuera|restaurante/, "hand-platter"],
+  [/\bcraft\b/, "spool"],
+  [/\bbatch\b|meal ?prep/, "cooking-pot"],
+];
+
 export function etiquetaInfo(tag) {
-  return ETIQUETAS[tag] || { icon: "pin", label: tag.charAt(0).toUpperCase() + tag.slice(1), tone: "peach" };
+  if (ETIQUETAS[tag]) return ETIQUETAS[tag];
+  const plain = tag.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const icon = ICONOS_ETIQUETA.find(([re]) => re.test(plain))?.[1] || "pin";
+  return { icon, label: tag.charAt(0).toUpperCase() + tag.slice(1), tone: "peach" };
 }
 
 // Notas fijas que tocan hoy: las generales, más las que mencionan una etiqueta de hoy.

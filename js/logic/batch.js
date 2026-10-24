@@ -1,7 +1,7 @@
 // Batch (mealprep): qué día toca y cuánto llevas.
 
 import { pasoBatch } from "./validar.js";
-import { datesBetween, fromISO, isISODate } from "./fechas.js";
+import { datesBetween, fromISO, isISODate, toISO } from "./fechas.js";
 
 // En el orden de Date.getDay(), sin acentos.
 const DIAS = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
@@ -22,10 +22,31 @@ export function fechaDelBatch(cuando, inicio, fin) {
   return datesBetween(inicio, fin).find((f) => fromISO(f).getDay() === dia) || null;
 }
 
-// El día de un bloque de mealprep: su "fecha" exacta si la trae (puede ser antes del lunes del menú,
-// como el batch del domingo anterior); si no, el día que nombra "cuando" dentro de la semana.
+const MESES = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, set: 8, oct: 9, nov: 10, dic: 11 };
+
+// Una fecha escrita en el texto: "Domingo 25 oct", "el 3 de noviembre". El año: el más cercano a "cerca".
+// null si no hay fecha o no existe (31 de febrero).
+export function fechaEnTexto(texto, cerca) {
+  const m = sinAcentos(String(texto || "")).match(/\b(\d{1,2})\s*(?:de\s+)?(ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)[a-z]*\b/);
+  if (!m) return null;
+  const dia = Number(m[1]);
+  const mes = MESES[m[2]];
+  const base = fromISO(cerca);
+  const opciones = [-1, 0, 1]
+    .map((d) => new Date(base.getFullYear() + d, mes, dia))
+    .filter((f) => f.getDate() === dia && f.getMonth() === mes);
+  if (!opciones.length) return null;
+  opciones.sort((a, b) => Math.abs(a - base) - Math.abs(b - base));
+  return toISO(opciones[0]);
+}
+
+// El día de un bloque de mealprep, en este orden:
+// 1. su "fecha" exacta (puede ser antes del lunes del menú, como el batch del domingo anterior);
+// 2. una fecha escrita en "cuando" ("Domingo 25 oct, después de las 17h");
+// 3. el día de la semana que nombra "cuando", dentro de las fechas del menú.
 export function fechaDeBloque(b, semana) {
-  return isISODate(b.fecha) ? b.fecha : fechaDelBatch(b.cuando, semana.inicio, semana.fin);
+  if (isISODate(b.fecha)) return b.fecha;
+  return fechaEnTexto(b.cuando, semana.inicio) || fechaDelBatch(b.cuando, semana.inicio, semana.fin);
 }
 
 // Todos los bloques de mealprep (de cualquier menú) que tocan en una fecha: [{ semana, i }]
