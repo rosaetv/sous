@@ -64,3 +64,14 @@ export function progresoBatch(inicio, i, b, checks) {
   const hechos = b.pasos.filter((_, j) => checks.has(batchKey(inicio, i, j))).length;
   return { hechos, total };
 }
+
+// El mealprep grande del domingo tiene su propia página; el de entre semana se palomea en el día.
+export function esDelDomingo(b, semana) {
+  const fecha = fechaDeBloque(b, semana);
+  return !!fecha && fromISO(fecha).getDay() === 0;
+}
+
+// Minutos activos del bloque: los de cada paso, o los de su receta si el paso no trae. 0 si no hay datos.
+export function minutosBatch(b, recetas = new Map()) {
+  return pasosDe(b).reduce((sum, p) => sum + (p.min ?? recetas.get(p.recetaId)?.tiempoActivoMin ?? 0), 0);
+}

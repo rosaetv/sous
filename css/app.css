@@ -728,6 +728,177 @@ ul {
   color: var(--prep-accent);
 }
 
+/* Tarjeta del mealprep del domingo: abre su página */
+.batch-link {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.batch-link .batch-before,
+.batch-link .batch-bar {
+  display: block;
+}
+
+/* ---------- Página del mealprep del domingo ---------- */
+
+.prep-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.prep-title {
+  margin: 2px 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--weight-title);
+}
+
+.prep-title .batch-icon {
+  width: 22px;
+  height: 22px;
+  color: var(--prep-accent);
+}
+
+.prep-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+}
+
+.prep-progress .batch-bar {
+  background: var(--prep-line);
+}
+
+.prep-progress .batch-bar span {
+  background: var(--prep-accent);
+}
+
+.prep-list {
+  scroll-margin-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prep-step {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.prep-step.is-current {
+  background: var(--prep-bg);
+  box-shadow: none;
+}
+
+.prep-step.is-done {
+  padding-bottom: var(--space-3);
+}
+
+.prep-step:not(.is-done) {
+  cursor: pointer;
+}
+
+.prep-hint {
+  margin: 0 0 var(--space-3);
+}
+
+.prep-now {
+  margin: 0 0 2px;
+  color: var(--prep-accent);
+  font-size: var(--font-size-xs);
+  font-weight: var(--weight-label);
+  letter-spacing: 0.02em;
+}
+
+/* El check solo ocupa la línea del título; las indicaciones usan todo el ancho */
+.prep-step-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.prep-step-title {
+  flex: 1;
+  margin: 0;
+  font-weight: var(--weight-title);
+}
+
+.prep-step-title .small {
+  font-weight: normal;
+}
+
+.prep-step.is-done .prep-step-name {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.prep-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  margin: -8px -10px -8px 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.prep-check .dot {
+  width: 24px;
+  height: 24px;
+}
+
+.is-current .prep-check .dot {
+  box-shadow: inset 0 0 0 1.5px var(--prep-accent);
+}
+
+.prep-check[aria-pressed="true"] .dot {
+  background: var(--prep-accent);
+  box-shadow: none;
+  animation: pop var(--transition-pop);
+}
+
+.batch-before.prep-before {
+  color: var(--prep-accent);
+}
+
+.prep-steps-list {
+  margin: var(--space-2) 0 0;
+  padding-left: 1.2em;
+  list-style: disc;
+}
+
+ol.prep-steps-list {
+  list-style: decimal;
+}
+
+.prep-steps-list li {
+  margin-top: var(--space-1);
+}
+
+.prep-recipe {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: var(--tap-min);
+  margin-bottom: -8px;
+  color: var(--prep-accent);
+  font-weight: var(--weight-label);
+  text-decoration: none;
+}
+
+.prep-recipe .icon {
+  width: 16px;
+  height: 16px;
+}
+
 /* ---------- Checklist (batch y súper) ---------- */
 
 .batches {

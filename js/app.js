@@ -8,6 +8,7 @@ import { renderAjustes } from "./screens/ajustes.js";
 import { renderStyleguide } from "./screens/styleguide.js";
 import { renderImportar } from "./screens/importar.js";
 import { renderResumen } from "./screens/resumen.js";
+import { renderMealprep } from "./screens/mealprep.js";
 import { icon, closeSheets } from "./ui.js";
 import { setupPWA } from "./pwa.js";
 
@@ -17,6 +18,7 @@ const view = document.getElementById("view");
 const routes = [
   [/^hoy$/, renderHoy, "hoy"],
   [/^dia\/(\d{4}-\d{2}-\d{2})$/, renderHoy, "hoy"],
+  [/^mealprep\/(\d{4}-\d{2}-\d{2})\/(\d+)$/, renderMealprep, "hoy"],
   [/^semana$/, renderSemana, "semana"],
   [/^semana\/(\d{4}-\d{2}-\d{2})$/, renderSemana, "semana"],
   [/^recetas$/, renderRecetas, "recetas"],

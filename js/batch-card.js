@@ -1,9 +1,10 @@
 // Tarjeta del batch (mealprep): título con cuándo, progreso y los pasos para palomear.
 // Si un paso enlaza una receta que tienes, tocar el texto la abre; la casilla palomea aparte.
 // La usan Semana (arriba, plegable) y Hoy (el día que toca).
+// El mealprep del domingo no se palomea aquí: es una tarjeta con › que abre su página (#/mealprep/inicio/i).
 
 import { esc, icon } from "./ui.js";
-import { batchKey, pasosDe, progresoBatch } from "./logic/batch.js";
+import { batchKey, pasosDe, progresoBatch, minutosBatch } from "./logic/batch.js";
 import { setCheck } from "./store.js";
 
 // recetas: Map de id → receta. open: null si no se pliega, true/false si sí. antes: texto opcional sobre el título.
@@ -68,7 +69,26 @@ export function batchCardHTML({ semana, i, checks, recetas, open = null, antes =
     </section>`;
 }
 
-function progresoTexto(hechos, total) {
+// Tarjeta resumida que abre la página del mealprep: título, avance, minutos activos y ›.
+export function batchLinkHTML({ semana, i, checks, recetas, antes = "" }) {
+  const b = semana.batch[i];
+  const { hechos, total } = progresoBatch(semana.inicio, i, b, checks);
+  const min = minutosBatch(b, recetas);
+  return `
+    <a class="card batch batch-link" href="#/mealprep/${semana.inicio}/${i}" data-batch="${i}" data-inicio="${semana.inicio}">
+      ${antes ? `<span class="batch-before">${esc(antes)}</span>` : ""}
+      <span class="batch-head">
+        <span class="batch-head-text">
+          <span class="batch-title">${icon("cooking-pot", "icon batch-icon")} Mealprep${b.cuando ? ` · ${esc(b.cuando)}` : ""}</span>
+          <span class="small muted batch-progress">${progresoTexto(hechos, total)}${min ? ` · ~${min} min activos` : ""}</span>
+        </span>
+        ${icon("chevron-right", "icon chevron")}
+      </span>
+      <span class="batch-bar"><span style="width: ${total ? (hechos / total) * 100 : 0}%"></span></span>
+    </a>`;
+}
+
+export function progresoTexto(hechos, total) {
   return `${hechos === total ? "¡Listo! " : ""}${hechos} de ${total} ${total === 1 ? "paso" : "pasos"}`;
 }
 

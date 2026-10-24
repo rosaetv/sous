@@ -6,7 +6,7 @@
 //   (python3 dev/revisar-sw.py avisa si falta alguno).
 // - Tus datos (menús, marcas, recetas, fotos) no van aquí: viven en IndexedDB.
 
-const VERSION = "1.12.1"; // la reemplaza dev/publicar.py
+const VERSION = "1.13.0"; // la reemplaza dev/publicar.py
 const CACHE = `sous-${VERSION}`;
 const PHOTO_CACHE = "sous-fotos"; // fotos de recetas de otros sitios (imagenUrl): no cambia con cada versión
 
@@ -39,6 +39,7 @@ const FILES = [
   "js/screens/ajustes.js",
   "js/screens/hoy.js",
   "js/screens/importar.js",
+  "js/screens/mealprep.js",
   "js/screens/recetas.js",
   "js/screens/resumen.js",
   "js/screens/semana.js",

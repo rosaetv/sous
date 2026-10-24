@@ -9,8 +9,8 @@ import { momentoLabel, etiquetaInfo, MACROS_PANTALLA } from "../logic/menu.js";
 import { allWeeks, defaultWeek, dayPlan, marksBetween, checksWithPrefix, swapDays, recipesById } from "../store.js";
 import { swapTargets, chooseAndSwap } from "../swap-day.js";
 import { swapLabel } from "../logic/cambios.js";
-import { batchCardHTML, toggleBatchCheck } from "../batch-card.js";
-import { progresoBatch, fechaDeBloque, bloquesDelDia } from "../logic/batch.js";
+import { batchCardHTML, batchLinkHTML, toggleBatchCheck } from "../batch-card.js";
+import { progresoBatch, fechaDeBloque, bloquesDelDia, esDelDomingo } from "../logic/batch.js";
 
 const STATE_ICON = { comido: "check", cambiado: "pencil-line", no: "ban" };
 const MACROS = MACROS_PANTALLA;
@@ -155,18 +155,19 @@ export async function renderSemana(view, inicioParam) {
       </article>`;
   }
 
+  // El del domingo es una tarjeta con › que abre su página; el de entre semana se palomea aquí mismo.
   const batchCards = (bloques, antesDe = () => "") =>
     bloques
-      .map((b) =>
-        batchCardHTML({
+      .map((b) => {
+        const datos = {
           semana: b.semana,
           i: b.i,
           checks: batchChecks,
           recetas,
-          open: batchOpen.has(keyOf(b)),
           antes: antesDe(b) || (b.semana !== semana ? `Para el menú del ${rangeLabel(b.semana.inicio, b.semana.fin)}` : ""),
-        }),
-      )
+        };
+        return esDelDomingo(b.semana.batch[b.i], b.semana) ? batchLinkHTML(datos) : batchCardHTML({ ...datos, open: batchOpen.has(keyOf(b)) });
+      })
       .join("");
 
   function render() {

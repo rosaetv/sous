@@ -9,8 +9,8 @@ import { reservaDelDia } from "../logic/reserva.js";
 import { allRecipes, allWeeks } from "../store.js";
 import { weekFor, dayPlan, marksFor, setMark, clearMark, updateMark, swapDays, recipeIds, recipesById, checksWithPrefix } from "../store.js";
 import { swapTargets, chooseAndSwap } from "../swap-day.js";
-import { batchCardHTML, toggleBatchCheck } from "../batch-card.js";
-import { bloquesDelDia, progresoBatch } from "../logic/batch.js";
+import { batchCardHTML, batchLinkHTML, toggleBatchCheck } from "../batch-card.js";
+import { bloquesDelDia, progresoBatch, esDelDomingo } from "../logic/batch.js";
 
 function longDate(fecha) {
   const text = fromISO(fecha).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" });
@@ -96,7 +96,10 @@ export async function renderHoy(view, fechaParam) {
       ${
         bloques.length
           ? `<div class="stack batches">${bloques
-              .map(({ semana: w, i }) => batchCardHTML({ semana: w, i, checks, recetas: recetasMap, antes: `Para el menú del ${rangeLabel(w.inicio, w.fin)}` }))
+              .map(({ semana: w, i }) => {
+                const datos = { semana: w, i, checks, recetas: recetasMap, antes: `Para el menú del ${rangeLabel(w.inicio, w.fin)}` };
+                return esDelDomingo(w.batch[i], w) ? batchLinkHTML(datos) : batchCardHTML(datos);
+              })
               .join("")}</div>`
           : ""
       }`;
@@ -111,7 +114,7 @@ export async function renderHoy(view, fechaParam) {
 
   const swapOptions = swapTargets(semana, fecha, today);
 
-  // El mealprep del domingo (el grande) va arriba, debajo de las notas, plegado (se abre al tocarlo).
+  // El mealprep del domingo (el grande) va arriba, debajo de las notas, como tarjeta con › que abre su página.
   // El de entre semana, y el del domingo ya terminado, van al final del día, después de la cena. Puede venir de otro menú: el batch del domingo anterior al lunes de la semana siguiente.
   const batchHoy = bloquesDelDia(await allWeeks(), fecha);
   const batchWeeks = [...new Set(batchHoy.map((b) => b.semana))];
@@ -129,10 +132,11 @@ export async function renderHoy(view, fechaParam) {
   };
   const batchArriba = () => (esDomingo ? batchHoy.filter((b) => !batchDone(b)) : []);
   const batchAbajo = () => batchHoy.filter((b) => !batchArriba().includes(b));
-  const batchOpen = new Set(); // bloques de arriba abiertos, por "inicio|i"
-  const batchCard = ({ semana: w, i }, open = null) =>
-    batchCardHTML({ semana: w, i, checks: batchChecks, recetas: recetasMap, open, antes: w !== semana ? `Para el menú del ${rangeLabel(w.inicio, w.fin)}` : "" });
-  const prepHTML = () => batchArriba().map((b) => batchCard(b, batchOpen.has(`${b.semana.inicio}|${b.i}`))).join("");
+  const batchCard = ({ semana: w, i }) => {
+    const datos = { semana: w, i, checks: batchChecks, recetas: recetasMap, antes: w !== semana ? `Para el menú del ${rangeLabel(w.inicio, w.fin)}` : "" };
+    return esDomingo ? batchLinkHTML(datos) : batchCardHTML(datos);
+  };
+  const prepHTML = () => batchArriba().map(batchCard).join("");
 
   const card = (comida) =>
     mealCardHTML(comida, marks[comida.momento], { hasRecipe: comida.recetaId && recetas.has(comida.recetaId), open: open.has(comida.momento) });
@@ -445,14 +449,6 @@ export async function renderHoy(view, fechaParam) {
 
     // Tocar la tarjeta (fuera de sus botones y enlaces) abre "¿Qué comiste?".
     if (comida && !event.target.closest("a, button, input")) return editWhatYouAte(comida);
-
-    if (action === "batch-toggle") {
-      const cardEl = event.target.closest("[data-batch]");
-      const key = `${cardEl.dataset.inicio}|${cardEl.dataset.batch}`;
-      batchOpen.has(key) ? batchOpen.delete(key) : batchOpen.add(key);
-      view.querySelector(".day-prep").innerHTML = prepHTML();
-      return;
-    }
 
     if (action === "notes") {
       try {

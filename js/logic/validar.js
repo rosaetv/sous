@@ -151,18 +151,31 @@ function macros(value, where, ctx) {
   return out;
 }
 
-// Un paso del batch: texto ("Cocer arroz") o { texto, recetaId }. Siempre sale como { texto, recetaId|null }.
+// Un paso del batch: texto ("Cocer arroz"), { texto, recetaId } o, en el del domingo, un bloque
+// { titulo, tiempoActivoMin, indicaciones: [...], numerado }. Siempre sale como { texto, recetaId|null },
+// más min, indicaciones y numerado solo si vienen (texto es el título del bloque).
 // También sirve para las semanas guardadas antes de 1.5.0, que tienen los pasos como texto.
 const BATCH_NAMES = ["batch", "mealprep", "meal_prep", "preparacion", "prep", "batchcooking", "batchdomingo"];
-const PASO_TEXTO = ["texto", "paso", "descripcion", "tarea", "accion", "nombre"];
+const PASO_TEXTO = ["titulo", "texto", "paso", "descripcion", "tarea", "accion", "nombre"];
 const PASO_RECETA = ["recetaId", "receta", "receta_id", "modulo"];
+const PASO_MIN = ["tiempoActivoMin", "min", "minutos", "tiempo"];
+const PASO_INDICACIONES = ["indicaciones", "detalle", "detalles", "instrucciones", "subpasos"];
+const PASO_NUMERADO = ["numerado", "ordenado"];
 
 export function pasoBatch(p) {
-  if (p && typeof p === "object") {
-    const recetaId = pick(p, PASO_RECETA);
-    return { texto: text(pick(p, PASO_TEXTO)), recetaId: isText(recetaId) ? text(recetaId) : null };
+  if (!p || typeof p !== "object") return { texto: text(p), recetaId: null };
+  const recetaId = pick(p, PASO_RECETA);
+  const paso = { texto: text(pick(p, PASO_TEXTO)), recetaId: isText(recetaId) ? text(recetaId) : null };
+  const min = parseFloat(String(pick(p, PASO_MIN) ?? "").replace(",", "."));
+  if (min > 0) paso.min = min;
+  let indicaciones = pick(p, PASO_INDICACIONES);
+  if (isText(indicaciones)) indicaciones = [indicaciones];
+  if (Array.isArray(indicaciones)) {
+    indicaciones = indicaciones.filter(isText).map(text);
+    if (indicaciones.length) paso.indicaciones = indicaciones;
   }
-  return { texto: text(p), recetaId: null };
+  if (pick(p, PASO_NUMERADO) === true) paso.numerado = true;
+  return paso;
 }
 
 // La cantidad puede venir como número (2) o como texto ("al gusto").
@@ -287,7 +300,7 @@ function validarMenu(obj, ctx) {
       if (p && typeof p === "object" && !Array.isArray(p)) {
         const paso = pasoBatch(p);
         if (!paso.texto) {
-          ctx.errores.push(`${where}: falta el texto del paso.`);
+          ctx.errores.push(`${where}: falta el título del paso (titulo).`);
           return [];
         }
         return [paso];
