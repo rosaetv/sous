@@ -326,6 +326,10 @@ ul {
   margin-top: var(--space-3);
 }
 
+.day-prep:empty {
+  display: none;
+}
+
 .notes-toggle {
   display: flex;
   align-items: center;
