@@ -6,7 +6,7 @@
 //   (python3 dev/revisar-sw.py avisa si falta alguno).
 // - Tus datos (menús, marcas, recetas, fotos) no van aquí: viven en IndexedDB.
 
-const VERSION = "1.10.0"; // la reemplaza dev/publicar.py
+const VERSION = "1.11.0"; // la reemplaza dev/publicar.py
 const CACHE = `sous-${VERSION}`;
 const PHOTO_CACHE = "sous-fotos"; // fotos de recetas de otros sitios (imagenUrl): no cambia con cada versión
 

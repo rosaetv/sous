@@ -10,7 +10,7 @@ import { allWeeks, defaultWeek, dayPlan, marksBetween, checksWithPrefix, swapDay
 import { swapTargets, chooseAndSwap } from "../swap-day.js";
 import { swapLabel } from "../logic/cambios.js";
 import { batchCardHTML, toggleBatchCheck } from "../batch-card.js";
-import { progresoBatch, fechaDelBatch } from "../logic/batch.js";
+import { progresoBatch, fechaDeBloque, bloquesDelDia } from "../logic/batch.js";
 
 const STATE_ICON = { comido: "check", cambiado: "pencil-line", no: "ban" };
 const MACROS = MACROS_PANTALLA;
@@ -57,13 +57,27 @@ export async function renderSemana(view, inicioParam) {
   const marks = await marksBetween(semana.inicio, semana.fin);
   const byDay = {};
   marks.forEach((m) => ((byDay[m.fecha] ||= {})[m.momento] = m));
-  const [batchChecks, recetas] = await Promise.all([checksWithPrefix(`${semana.inicio}|batch|`), recipesById()]);
-  // El batch se abre solo si le faltan pasos.
+  // Mealprep de esta semana, por día. Puede venir de otro menú (el batch del domingo para la semana siguiente),
+  // y el de este menú puede caer antes del lunes ("Antes de empezar").
+  const porDia = Object.fromEntries(semana.dias.map((d) => [d.fecha, bloquesDelDia(semanas, d.fecha)]));
+  const propios = semana.batch.map((b, i) => ({ semana, i, fecha: fechaDeBloque(b, semana) }));
+  const antes = propios.filter((b) => b.fecha && b.fecha < semana.inicio);
+  const sinDia = propios.filter((b) => !b.fecha || b.fecha > semana.fin);
+  const todos = [...Object.values(porDia).flat(), ...antes, ...sinDia];
+  const batchWeeks = [...new Set([semana, ...todos.map((b) => b.semana)])];
+  const [batchChecks, recetas] = await Promise.all([
+    Promise.all(batchWeeks.map((w) => checksWithPrefix(`${w.inicio}|batch|`))).then((sets) => new Set(sets.flatMap((x) => [...x]))),
+    recipesById(),
+  ]);
+  const keyOf = (b) => `${b.semana.inicio}|${b.i}`;
+  // El mealprep se abre solo si le faltan pasos.
   const batchOpen = new Set(
-    semana.batch.map((b, i) => i).filter((i) => {
-      const { hechos, total } = progresoBatch(semana.inicio, i, semana.batch[i], batchChecks);
-      return hechos < total;
-    }),
+    todos
+      .filter((b) => {
+        const { hechos, total } = progresoBatch(b.semana.inicio, b.i, b.semana.batch[b.i], batchChecks);
+        return hechos < total;
+      })
+      .map(keyOf),
   );
 
   // Abierto por defecto: hoy (o el primer día si no es esta semana).
@@ -95,7 +109,7 @@ export async function renderSemana(view, inicioParam) {
             <span class="day-name">${esc(shortDay(plan.fecha))}${plan.fecha === today ? ` <span class="today-badge">Hoy</span>` : ""}</span>
             <span class="day-meta">
               ${plan.etiquetas.map((t) => `<span title="${esc(etiquetaInfo(t).label)}">${icon(etiquetaInfo(t).icon)}</span>`).join("")}
-              ${batchDay.includes(plan.fecha) ? `<span title="Mealprep">${icon("cooking-pot")}</span>` : ""}
+              ${porDia[plan.fecha]?.length ? `<span title="Mealprep">${icon("cooking-pot")}</span>` : ""}
               ${swapped ? `<span class="day-swapped">${icon("arrow-left-right")} menú del ${esc(shortDay(plan.origen))}</span>` : ""}
             </span>
           </span>
@@ -122,7 +136,7 @@ export async function renderSemana(view, inicioParam) {
                 })
                 .join("")}
             </ul>
-            ${batchCards(plan.fecha)}
+            ${batchCards(porDia[plan.fecha] || [])}
             ${macrosGrid(plan.macros)}
             ${`
               <div class="day-actions">
@@ -141,13 +155,18 @@ export async function renderSemana(view, inicioParam) {
       </article>`;
   }
 
-  // Qué mealprep va después de cada día (null = sin día reconocible: al final).
-  const batchDay = semana.batch.map((b) => fechaDelBatch(b.cuando, semana.inicio, semana.fin));
-  const batchCards = (fecha) =>
-    semana.batch
-      .map((_, i) => i)
-      .filter((i) => batchDay[i] === fecha)
-      .map((i) => batchCardHTML({ semana, i, checks: batchChecks, recetas, open: batchOpen.has(i) }))
+  const batchCards = (bloques, antesDe = () => "") =>
+    bloques
+      .map((b) =>
+        batchCardHTML({
+          semana: b.semana,
+          i: b.i,
+          checks: batchChecks,
+          recetas,
+          open: batchOpen.has(keyOf(b)),
+          antes: antesDe(b) || (b.semana !== semana ? `Para el menú del ${rangeLabel(b.semana.inicio, b.semana.fin)}` : ""),
+        }),
+      )
       .join("");
 
   function render() {
@@ -173,7 +192,8 @@ export async function renderSemana(view, inicioParam) {
         <p class="week-counts"><span class="meta-tag is-eaten">${icon("check")} ${totals.comido}</span><span class="meta-tag is-swapped">${icon("pencil-line")} ${totals.cambiado}</span><span class="meta-tag is-skipped">${icon("ban")} ${totals.no}</span></p>
       </div>
 
-      <div class="stack days">${all.map(dayHTML).join("")}${batchCards(null)}</div>
+      ${antes.length ? `<div class="stack batches before-week">${batchCards(antes, (b) => `Antes de empezar · ${shortDay(b.fecha)}`)}</div>` : ""}
+      <div class="stack days">${all.map(dayHTML).join("")}${batchCards(sinDia)}</div>
       <a class="btn btn-ghost btn-block week-summary-link" href="#/resumen/${semana.inicio}">${icon("message-square-text")} Resumen para Claude</a>`;
   }
 
@@ -202,12 +222,13 @@ export async function renderSemana(view, inicioParam) {
     }
 
     if (action === "batch-toggle") {
-      const i = Number(event.target.closest("[data-batch]").dataset.batch);
-      batchOpen.has(i) ? batchOpen.delete(i) : batchOpen.add(i);
+      const card = event.target.closest("[data-batch]");
+      const key = `${card.dataset.inicio}|${card.dataset.batch}`;
+      batchOpen.has(key) ? batchOpen.delete(key) : batchOpen.add(key);
       render();
       return;
     }
 
-    await toggleBatchCheck(event, semana, batchChecks);
+    await toggleBatchCheck(event, batchWeeks, batchChecks);
   };
 }

@@ -679,6 +679,17 @@ ul {
   padding-top: var(--space-3);
 }
 
+.batch-before {
+  color: var(--color-primary-deep);
+  font-size: var(--font-size-xs);
+  font-weight: var(--weight-label);
+  letter-spacing: 0.02em;
+}
+
+.before-week {
+  margin-top: var(--space-5);
+}
+
 .batch-head {
   display: flex;
   align-items: center;

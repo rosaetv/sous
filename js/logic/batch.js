@@ -1,7 +1,7 @@
 // Batch (mealprep): qué día toca y cuánto llevas.
 
 import { pasoBatch } from "./validar.js";
-import { datesBetween, fromISO } from "./fechas.js";
+import { datesBetween, fromISO, isISODate } from "./fechas.js";
 
 // En el orden de Date.getDay(), sin acentos.
 const DIAS = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
@@ -20,6 +20,17 @@ export function fechaDelBatch(cuando, inicio, fin) {
   });
   if (dia === -1) return null;
   return datesBetween(inicio, fin).find((f) => fromISO(f).getDay() === dia) || null;
+}
+
+// El día de un bloque de mealprep: su "fecha" exacta si la trae (puede ser antes del lunes del menú,
+// como el batch del domingo anterior); si no, el día que nombra "cuando" dentro de la semana.
+export function fechaDeBloque(b, semana) {
+  return isISODate(b.fecha) ? b.fecha : fechaDelBatch(b.cuando, semana.inicio, semana.fin);
+}
+
+// Todos los bloques de mealprep (de cualquier menú) que tocan en una fecha: [{ semana, i }]
+export function bloquesDelDia(semanas, fecha) {
+  return semanas.flatMap((semana) => semana.batch.map((b, i) => ({ semana, i })).filter(({ semana, i }) => fechaDeBloque(semana.batch[i], semana) === fecha));
 }
 
 export const batchKey = (inicio, i, j) => `${inicio}|batch|${i}|${j}`;

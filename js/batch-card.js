@@ -6,8 +6,8 @@ import { esc, icon } from "./ui.js";
 import { batchKey, pasosDe, progresoBatch } from "./logic/batch.js";
 import { setCheck } from "./store.js";
 
-// recetas: Map de id → receta. open: null si no se pliega, true/false si sí.
-export function batchCardHTML({ semana, i, checks, recetas, open = null }) {
+// recetas: Map de id → receta. open: null si no se pliega, true/false si sí. antes: texto opcional sobre el título.
+export function batchCardHTML({ semana, i, checks, recetas, open = null, antes = "" }) {
   const b = semana.batch[i];
   const { hechos, total } = progresoBatch(semana.inicio, i, b, checks);
   const titulo = `${icon("cooking-pot", "icon batch-icon")} Mealprep${b.cuando ? ` · ${esc(b.cuando)}` : ""}`;
@@ -45,7 +45,8 @@ export function batchCardHTML({ semana, i, checks, recetas, open = null }) {
     .join("");
 
   return `
-    <section class="card batch" data-batch="${i}">
+    <section class="card batch" data-batch="${i}" data-inicio="${semana.inicio}">
+      ${antes ? `<p class="batch-before">${esc(antes)}</p>` : ""}
       ${
         foldable
           ? `<button class="batch-head" data-action="batch-toggle" aria-expanded="${open}">
@@ -73,7 +74,8 @@ function progresoTexto(hechos, total) {
 
 // Palomea o quita un paso y actualiza la tarjeta en su lugar (sin volver a dibujarla).
 // Devuelve true si el clic era de una casilla del batch.
-export async function toggleBatchCheck(event, semana, checks) {
+// semanas: la semana, o una lista de semanas (si en pantalla hay mealprep de varios menús).
+export async function toggleBatchCheck(event, semanas, checks) {
   const check = event.target.closest(".batch [data-check]");
   if (!check) return false;
   const key = check.dataset.check;
@@ -82,6 +84,7 @@ export async function toggleBatchCheck(event, semana, checks) {
 
   const card = check.closest("[data-batch]");
   const i = Number(card.dataset.batch);
+  const semana = [semanas].flat().find((s) => s.inicio === card.dataset.inicio);
   const { hechos, total } = progresoBatch(semana.inicio, i, semana.batch[i], checks);
   check.setAttribute("aria-pressed", on);
   check.closest("li").querySelector(".batch-step-text > span:first-child")?.classList.toggle("is-done", on);

@@ -295,7 +295,10 @@ function validarMenu(obj, ctx) {
       return p == null || text(p) === "" ? [] : [pasoBatch(p)];
     });
     if (!pasos.length) return [];
-    return [{ cuando: text(pick(b, ["cuando", "dia", "day", "when", "momento"])), pasos }];
+    // fecha exacta (opcional): el día en que se hace, aunque sea antes del lunes del menú.
+    const fecha = pick(b, ["fecha", "date"]);
+    if (fecha != null && fecha !== "" && !isISODate(fecha)) ctx.avisos.push(`batch ${i + 1}: la fecha "${fecha}" no es como "2026-10-25"; se usa el día de "cuando".`);
+    return [{ cuando: text(pick(b, ["cuando", "dia", "day", "when", "momento"])), fecha: isISODate(fecha) ? fecha : null, pasos }];
   });
   if (!batch.length) ctx.avisos.push("Este menú no trae mealprep (falta el campo batch).");
 
