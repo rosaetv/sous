@@ -22,9 +22,25 @@ export async function previewImport({ tipo, datos }) {
 
 // Guarda lo importado. Devuelve un resumen corto para mostrar.
 export async function applyImport({ tipo, datos }) {
-  if (tipo === "menu") return importMenu(datos);
-  if (tipo === "lista") return importLista(datos);
-  return importRecetario(datos);
+  const summary = tipo === "menu" ? await importMenu(datos) : tipo === "lista" ? await importLista(datos) : await importRecetario(datos);
+  // Cuándo fue la última importación de cada tipo (se ve en la pantalla Importar).
+  await db.put("kv", { at: now(), detalle: `${summary.title}${summary.detail ? ` · ${summary.detail}` : ""}` }, `importado|${tipo}`);
+  return summary;
+}
+
+// Última importación de cada tipo: { menu, lista, recetario } → { at, detalle } o null.
+// Para lo importado antes de guardar esto, se calcula de los datos.
+export async function lastImports() {
+  const [semanas, listas, recetas] = await Promise.all([db.getAll("semanas"), db.getAll("listas"), db.getAll("recetas")]);
+  const newest = (list) => list.reduce((best, x) => ((x.importadoEn || "") > (best?.importadoEn || "") ? x : best), null);
+  const fallback = {
+    menu: newest(semanas) && { at: newest(semanas).importadoEn, detalle: `Menú del ${rangeLabel(newest(semanas).inicio, newest(semanas).fin)}` },
+    lista: newest(listas) && { at: newest(listas).importadoEn, detalle: "Lista del súper" },
+    recetario: newest(recetas) && { at: newest(recetas).importadoEn, detalle: `Recetario · ${recetas.length} recetas` },
+  };
+  const out = {};
+  for (const tipo of ["menu", "lista", "recetario"]) out[tipo] = (await db.get("kv", `importado|${tipo}`)) || fallback[tipo] || null;
+  return out;
 }
 
 // Reemplaza la semana con las mismas fechas. Las marcas no se tocan (viven aparte, por fecha y momento).

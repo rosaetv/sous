@@ -68,7 +68,7 @@ export function mealCardHTML(comida, mark, { hasRecipe = false, open = false } =
   return `
     <article class="card meal" data-momento="${comida.momento}" ${estado ? `data-state="${estado}"` : ""} role="button" tabindex="0" aria-label="${esc(momentoLabel(comida.momento))}: ¿qué comiste?">
       <div class="meal-head">
-        <span class="meal-moment">${esc(momentoLabel(comida.momento))}</span>
+        <span class="meal-moment">${esc(momentoLabel(comida.momento))}${comida.hora ? `<span class="meal-hora">${icon("clock")} ${esc(comida.hora)}</span>` : ""}</span>
         <span class="meal-head-end">
           ${hasRecipe ? `<a class="icon-btn plain" href="#/receta/${encodeURIComponent(comida.recetaId)}" aria-label="Ver receta">${icon("book-open")}</a>` : ""}
           ${statusHTML(estado)}

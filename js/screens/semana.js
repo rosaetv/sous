@@ -114,7 +114,7 @@ export async function renderSemana(view, inicioParam) {
                   <li>
                     ${dot(m?.estado)}
                     <span class="day-meal-text">
-                      <span class="day-meal-moment">${esc(momentoLabel(c.momento))}</span>
+                      <span class="day-meal-moment">${esc(momentoLabel(c.momento))}${c.hora ? ` · ${esc(c.hora)}` : ""}</span>
                       <span class="${m?.estado === "no" ? "muted" : ""}">${esc(c.plato)}</span>
                       ${m?.estado === "cambiado" ? `<span class="day-meal-swap">→ ${esc(swapLabel(c, m))}</span>` : ""}
                     </span>

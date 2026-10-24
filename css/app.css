@@ -1300,6 +1300,27 @@ textarea.field {
   font-size: var(--font-size-sm);
 }
 
+/* Hora recomendada junto al momento: "Desayuno · 8:00–8:30" */
+.meal-moment:has(.meal-hora) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-2);
+}
+
+.meal-hora {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-faint);
+  white-space: nowrap;
+}
+
+.meal-hora .icon {
+  width: 14px;
+  height: 14px;
+}
+
 .meal-name {
   font-size: var(--font-size-lg);
 }
@@ -2092,6 +2113,27 @@ textarea.field {
 
 .import-done .btn-block {
   margin-top: var(--space-2);
+}
+
+/* Tipos que se pueden importar, con su última importación */
+.list-item.import-type {
+  min-height: 72px;
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
+}
+
+.import-type .grow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.import-type[aria-pressed="true"] {
+  background: var(--color-primary-soft);
+}
+
+.import-type-check {
+  color: var(--color-primary-deep);
 }
 
 /* ---------- Ajustes: listas agrupadas ---------- */

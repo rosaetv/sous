@@ -3,8 +3,34 @@
 
 import { esc, icon, askSheet, toast } from "../ui.js";
 import { leer } from "../logic/validar.js";
-import { rangeLabel } from "../logic/fechas.js";
-import { previewImport, applyImport } from "../store.js";
+import { rangeLabel, whenLabel } from "../logic/fechas.js";
+import { previewImport, applyImport, lastImports } from "../store.js";
+
+// Lo que se puede importar. Todos se pegan igual (la app detecta cuál es); aquí se ve cuándo fue el último.
+// Para agregar otro tipo: sumarlo aquí y en validar.js / store.js.
+const TIPOS = [
+  { id: "menu", icon: "calendar-days", label: "Menú semanal" },
+  { id: "lista", icon: "shopping-basket", label: "Lista del súper" },
+  { id: "recetario", icon: "chef-hat", label: "Recetario" },
+];
+
+function tiposHTML(ultimas, elegido) {
+  return `
+    <div class="card list import-types">
+      ${TIPOS.map((t) => {
+        const u = ultimas[t.id];
+        return `
+        <button class="list-item list-button import-type" data-tipo="${t.id}" aria-pressed="${elegido === t.id}">
+          ${icon(t.icon)}
+          <span class="grow">
+            <span>${t.label}</span>
+            <span class="small muted">${u ? `Última: ${esc(whenLabel(u.at))}${u.detalle ? ` · ${esc(u.detalle)}` : ""}` : "Aún no lo importas"}</span>
+          </span>
+          ${elegido === t.id ? icon("check", "icon import-type-check") : ""}
+        </button>`;
+      }).join("")}
+    </div>`;
+}
 
 const MAX_ERRORS = 5;
 
@@ -62,15 +88,18 @@ function successHTML(summary) {
     </section>`;
 }
 
-export function renderImportar(view) {
+export async function renderImportar(view) {
   let result = null;
   let timer;
+  let elegido = null; // opcional: qué esperas pegar (solo para avisar si pegas otra cosa)
+  const ultimas = await lastImports();
 
   view.innerHTML = `
     <button class="icon-btn" data-action="back" aria-label="Volver">${icon("chevron-left")}</button>
     <h1 class="screen-title" style="margin-top: 16px">Importar</h1>
     <div class="import-body stack">
-      <p class="muted">Pega el JSON que te dio Claude: menú, lista del súper o recetario.</p>
+      <div class="import-types-slot">${tiposHTML(ultimas, elegido)}</div>
+      <p class="muted">Pega el JSON que te dio Claude. La app detecta solo qué es.</p>
       <button class="btn btn-primary btn-block" data-action="paste">${icon("clipboard-paste")} Pegar del portapapeles</button>
       <label class="sr-only" for="json">JSON</label>
       <textarea class="field" id="json" placeholder="O pégalo aquí" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
@@ -85,6 +114,12 @@ export function renderImportar(view) {
   const check = () => {
     result = textarea.value.trim() ? leer(textarea.value) : null;
     status.innerHTML = statusHTML(result);
+    // Si elegiste un tipo y pegaste otro, se avisa (pero se puede importar igual).
+    if (result?.ok && elegido && result.tipo !== elegido) {
+      const es = TIPOS.find((t) => t.id === result.tipo)?.label.toLowerCase();
+      const esperabas = TIPOS.find((t) => t.id === elegido)?.label.toLowerCase();
+      status.insertAdjacentHTML("beforeend", `<p class="import-warning">${icon("info")}<span>Esto es ${esc(es)}, no ${esc(esperabas)}.</span></p>`);
+    }
     importBtn.disabled = !result?.ok;
     importBtn.hidden = result?.ok === false; // con errores, solo se ve qué corregir
   };
@@ -98,6 +133,14 @@ export function renderImportar(view) {
   view.onclick = async (event) => {
     const action = event.target.closest("[data-action]")?.dataset.action;
     if (!action) return;
+
+    const tipoBtn = event.target.closest("[data-tipo]");
+    if (tipoBtn) {
+      elegido = elegido === tipoBtn.dataset.tipo ? null : tipoBtn.dataset.tipo;
+      view.querySelector(".import-types-slot").innerHTML = tiposHTML(ultimas, elegido);
+      if (textarea.value.trim()) check();
+      return;
+    }
 
     if (action === "back") {
       if (history.length > 1) history.back();

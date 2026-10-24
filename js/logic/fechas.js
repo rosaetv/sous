@@ -43,6 +43,17 @@ export function shortDay(iso) {
   return `${WEEKDAYS[date.getDay()]} ${date.getDate()}`;
 }
 
+// "hoy, 10:32", "ayer, 18:05" o "24 oct, 10:32" (de una fecha ISO con hora)
+export function whenLabel(isoDateTime) {
+  const d = new Date(isoDateTime);
+  const hora = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const dia = toISO(d);
+  const hoy = todayISO();
+  if (dia === hoy) return `hoy, ${hora}`;
+  if (dia === addDays(hoy, -1)) return `ayer, ${hora}`;
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}, ${hora}`;
+}
+
 // "19–25 oct" o "28 oct – 3 nov"
 export function rangeLabel(start, end) {
   const a = fromISO(start);

@@ -256,6 +256,7 @@ function validarMenu(obj, ctx) {
           recetaId: isText(c.recetaId) ? text(c.recetaId) : null,
           ingredientes: ingredientes(c.ingredientes, `${whereC} (${c.momento})`, ctx),
           nota: text(c.nota),
+          hora: text(pick(c, ["hora", "horario"])), // hora recomendada, como texto: "8:00–8:30"
         },
       ];
     });
