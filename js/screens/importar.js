@@ -1,4 +1,4 @@
-// Importar: pegas el JSON de Claude (menú, lista del súper o recetario) y se guarda.
+// Importar: pegas el JSON de Claude (menú, lista del súper, recetario o equivalencias) y se guarda.
 // Mientras pegas, la app ya te dice qué detectó o qué falta; nada se guarda hasta tocar "Importar".
 
 import { esc, icon, askSheet, toast } from "../ui.js";
@@ -12,6 +12,7 @@ const TIPOS = [
   { id: "menu", icon: "calendar-days", label: "Menú semanal" },
   { id: "lista", icon: "shopping-basket", label: "Lista del súper" },
   { id: "recetario", icon: "chef-hat", label: "Recetario" },
+  { id: "equivalencias", icon: "arrow-left-right", label: "Equivalencias" },
 ];
 
 function tiposHTML(ultimas, elegido) {
@@ -46,6 +47,10 @@ function describe(result) {
     };
   }
   if (result.tipo === "lista") return { iconName: "shopping-basket", text: `Lista del súper · ${d.items.length} artículos` };
+  if (result.tipo === "equivalencias") {
+    const n = d.grupos.reduce((sum, g) => sum + g.items.length, 0);
+    return { iconName: "arrow-left-right", text: `Equivalencias · ${d.grupos.length} grupos · ${n} ingredientes`, detail: d.grupos.map((g) => g.nombre).join(" · ") };
+  }
   return { iconName: "chef-hat", text: `Recetario · ${d.recetas.length} recetas` };
 }
 

@@ -22,7 +22,14 @@ export async function previewImport({ tipo, datos }) {
 
 // Guarda lo importado. Devuelve un resumen corto para mostrar.
 export async function applyImport({ tipo, datos }) {
-  const summary = tipo === "menu" ? await importMenu(datos) : tipo === "lista" ? await importLista(datos) : await importRecetario(datos);
+  const summary =
+    tipo === "menu"
+      ? await importMenu(datos)
+      : tipo === "lista"
+        ? await importLista(datos)
+        : tipo === "equivalencias"
+          ? await importEquivalencias(datos)
+          : await importRecetario(datos);
   // Cuándo fue la última importación de cada tipo (se ve en la pantalla Importar).
   await db.put("kv", { at: now(), detalle: `${summary.title}${summary.detail ? ` · ${summary.detail}` : ""}` }, `importado|${tipo}`);
   return summary;
@@ -39,7 +46,7 @@ export async function lastImports() {
     recetario: newest(recetas) && { at: newest(recetas).importadoEn, detalle: `Recetario · ${recetas.length} recetas` },
   };
   const out = {};
-  for (const tipo of ["menu", "lista", "recetario"]) out[tipo] = (await db.get("kv", `importado|${tipo}`)) || fallback[tipo] || null;
+  for (const tipo of ["menu", "lista", "recetario", "equivalencias"]) out[tipo] = (await db.get("kv", `importado|${tipo}`)) || fallback[tipo] || null;
   return out;
 }
 
@@ -87,6 +94,17 @@ async function importLista(lista) {
 
 // Actualiza cada receta por id. Las fotos viven aparte: importar nunca las toca.
 // Las recetas que ya no vienen en el recetario se quedan (no se borra nada).
+// Las equivalencias se reemplazan completas (siempre llega la lista entera).
+async function importEquivalencias(datos) {
+  await db.put("kv", { version: datos.version, grupos: datos.grupos, importadoEn: now() }, "equivalencias");
+  const n = datos.grupos.length;
+  return { title: "Equivalencias", detail: `${n} ${n === 1 ? "grupo" : "grupos"}` };
+}
+
+export async function equivalencias() {
+  return (await db.get("kv", "equivalencias"))?.grupos || [];
+}
+
 async function importRecetario(recetario) {
   const existing = new Set(await db.getAllKeys("recetas"));
   const nuevas = recetario.recetas.filter((r) => !existing.has(r.id)).length;

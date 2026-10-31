@@ -5,7 +5,7 @@
 import { isISODate, datesBetween, shortDay } from "./fechas.js";
 import { MOMENTOS, CATEGORIAS, toMomento, toCategoria } from "./menu.js";
 
-const TIPOS = ["menu", "lista", "recetario"];
+const TIPOS = ["menu", "lista", "recetario", "equivalencias"];
 const MACROS = ["kcal", "prot", "carb", "grasa", "fibra"];
 
 // ---------- Del texto al objeto ----------
@@ -41,14 +41,20 @@ export function validar(obj) {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
     return { ok: false, errores: ["El JSON debe ser un objeto que empiece con {."] };
   }
-  if (!("tipo" in obj)) return { ok: false, errores: ['Falta el campo tipo ("menu", "lista" o "recetario").'] };
+  if (!("tipo" in obj)) return { ok: false, errores: ['Falta el campo tipo ("menu", "lista", "recetario" o "equivalencias").'] };
   if (!TIPOS.includes(obj.tipo)) {
-    return { ok: false, errores: [`No reconozco el tipo "${obj.tipo}". Debe ser "menu", "lista" o "recetario".`] };
+    return { ok: false, errores: [`No reconozco el tipo "${obj.tipo}". Debe ser "menu", "lista", "recetario" o "equivalencias".`] };
   }
 
   const ctx = { errores: [], avisos: [], ignorados: new Set() };
   const datos =
-    obj.tipo === "menu" ? validarMenu(obj, ctx) : obj.tipo === "lista" ? validarLista(obj, ctx) : validarRecetario(obj, ctx);
+    obj.tipo === "menu"
+      ? validarMenu(obj, ctx)
+      : obj.tipo === "lista"
+        ? validarLista(obj, ctx)
+        : obj.tipo === "equivalencias"
+          ? validarEquivalencias(obj, ctx)
+          : validarRecetario(obj, ctx);
 
   if (ctx.errores.length) return { ok: false, tipo: obj.tipo, errores: ctx.errores };
   // Lo que no reconozco no se importa: lo digo para que no desaparezca sin avisar.
@@ -422,4 +428,27 @@ function validarRecetario(obj, ctx) {
   });
 
   return { tipo: "recetario", version: text(obj.version), recetas };
+}
+
+// ---------- Equivalencias ----------
+// Grupos de ingredientes que se pueden cambiar entre sí, cada uno con la cantidad que equivale:
+// { "nombre": "Fruta", "items": [{ "nombre": "Mandarina", "cantidad": 1, "unidad": "pieza" }, ...] }
+
+function validarEquivalencias(obj, ctx) {
+  const grupos = list(pick(obj, ["grupos", "equivalencias", "groups"]), "grupos", ctx, { required: true }).flatMap((g, i) => {
+    if (!g || typeof g !== "object") return [];
+    const nombre = text(pick(g, ["nombre", "grupo", "titulo"]));
+    const where = `Grupo ${i + 1}${nombre ? ` (${nombre})` : ""}`;
+    if (!nombre) ctx.errores.push(`${where}: falta el campo nombre.`);
+    const items = ingredientes(pick(g, ["items", "ingredientes", "opciones"]), where, ctx);
+    if (items.length < 2) {
+      ctx.errores.push(`${where}: necesita al menos 2 ingredientes en items.`);
+      return [];
+    }
+    const sinCantidad = items.filter((it) => typeof it.cantidad !== "number").map((it) => it.nombre);
+    if (sinCantidad.length) ctx.avisos.push(`${where}: sin cantidad en número: ${sinCantidad.join(", ")}.`);
+    return [{ nombre, items }];
+  });
+  if (!grupos.length && !ctx.errores.length) ctx.errores.push("No hay grupos de equivalencias.");
+  return { tipo: "equivalencias", version: text(obj.version), grupos };
 }

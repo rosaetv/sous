@@ -35,6 +35,27 @@ function singular(unidad) {
   return unidad;
 }
 
+// Para editar solo el número: "2 piezas" → { num: "2", unidad: "pieza" }; "2½ ml" → { num: "2,5", unidad: "ml" }.
+// null si no empieza con un número ("al gusto"): entonces se edita como texto libre.
+export function splitQty(text) {
+  const q = parseQty(text);
+  if (!q) return null;
+  return { num: String(Math.round(q.n * 100) / 100).replace(".", ","), unidad: singular(q.unidad) };
+}
+
+// La unidad como se lee junto al número: ("2", "pieza") → "piezas"; ("1", "pieza") → "pieza".
+export function unidadPara(num, unidad) {
+  const texto = joinQty(num, unidad);
+  return texto ? texto.split(" ").slice(1).join(" ") : unidad;
+}
+
+// De vuelta a texto con la unidad fija: ("3", "pieza") → "3 piezas"; ("0,5", "taza") → "½ taza". "" si no hay número.
+export function joinQty(num, unidad) {
+  const n = Number(String(num).trim().replace(",", "."));
+  if (String(num).trim() === "" || !Number.isFinite(n)) return "";
+  return formatQty(n, unidad);
+}
+
 const sameUnit = (a, b) => !a || !b || norm(singular(a)) === norm(singular(b));
 
 // Lo que queda de "total" después de comer "comido". null si no queda nada o no se puede calcular.

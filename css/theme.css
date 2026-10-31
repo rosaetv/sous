@@ -81,9 +81,10 @@
 
   /* Tamaños relativos al texto base (1rem). En el iPhone, 1rem sigue tu ajuste
      de "Tamaño del texto". Los px son con el tamaño estándar (16px). */
-  --font-size-xs: 0.8125rem;  /* 13px — etiquetas */
-  --font-size-sm: 0.9375rem;  /* 15px — texto secundario */
-  --font-size-md: 1.0625rem;  /* 17px — texto normal (como iOS) */
+  /* Texto igual que en ShowUp: en el iPhone con el tamaño más pequeño, 1rem ≈ 14px. */
+  --font-size-xs: 0.8rem;     /* ~13px — etiquetas */
+  --font-size-sm: 0.875rem;   /* 14px — texto secundario */
+  --font-size-md: 1rem;       /* 16px — texto normal */
   --font-size-lg: 1.25rem;    /* 20px — nombre del plato, títulos de sección */
   --font-size-xl: 1.625rem;   /* 26px — títulos de hojas */
   --font-size-xxl: 2.125rem;  /* 34px — título de pantalla (como iOS) */

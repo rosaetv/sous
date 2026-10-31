@@ -2,11 +2,12 @@
 
 import { esc, icon, emptyState, openSheet, toast } from "../ui.js";
 import { todayISO, fromISO, shortDay, addDays, rangeLabel } from "../logic/fechas.js";
-import { notasDeHoy, momentoLabel, categoriasDe } from "../logic/menu.js";
+import { notasDeHoy, momentoLabel, categoriasDe, formatQty } from "../logic/menu.js";
 import { mealCardHTML, tagsHTML } from "../meal-card.js";
 import { editableFrom, diffMeal, hasChanges, sameName } from "../logic/cambios.js";
-import { reservaDelDia } from "../logic/reserva.js";
-import { allRecipes, allWeeks } from "../store.js";
+import { reservaDelDia, splitQty, joinQty, unidadPara } from "../logic/reserva.js";
+import { allRecipes, allWeeks, equivalencias } from "../store.js";
+import { equivalentesDe } from "../logic/equivalencias.js";
 import { weekFor, dayPlan, marksFor, setMark, clearMark, updateMark, swapDays, recipeIds, recipesById, checksWithPrefix } from "../store.js";
 import { swapTargets, chooseAndSwap } from "../swap-day.js";
 import { batchCardHTML, batchLinkHTML, toggleBatchCheck } from "../batch-card.js";
@@ -107,7 +108,8 @@ export async function renderHoy(view, fechaParam) {
     return;
   }
 
-  const [marks, recetas] = await Promise.all([marksFor(fecha), recipeIds()]);
+  const [marks, recetas, grupos] = await Promise.all([marksFor(fecha), recipeIds(), equivalencias()]);
+  const conEquiv = (ing) => Boolean(equivalentesDe(ing, grupos));
   const open = new Set(); // comidas marcadas con los ingredientes abiertos
   const etiquetasSemana = [...new Set(semana.dias.flatMap((d) => d.etiquetas))];
   const notas = notasDeHoy(semana.notasFijas, plan.etiquetas, etiquetasSemana);
@@ -139,7 +141,7 @@ export async function renderHoy(view, fechaParam) {
   const prepHTML = () => batchArriba().map(batchCard).join("");
 
   const card = (comida) =>
-    mealCardHTML(comida, marks[comida.momento], { hasRecipe: comida.recetaId && recetas.has(comida.recetaId), open: open.has(comida.momento) });
+    mealCardHTML(comida, marks[comida.momento], { hasRecipe: comida.recetaId && recetas.has(comida.recetaId), open: open.has(comida.momento), conEquiv });
 
   // Lo pendiente primero (comidas en orden y luego el mealprep); lo ya marcado baja al final, en el mismo orden.
   function listHTML() {
@@ -260,8 +262,25 @@ export async function renderHoy(view, fechaParam) {
     toast("Desmarcada");
   }
 
+  // Equivalencias de un ingrediente, desde la tarjeta: solo para ver qué podrías agarrar en su lugar.
+  function showEquivalencias(ing) {
+    const eq = ing && equivalentesDe(ing, grupos);
+    if (!eq) return;
+    openSheet(
+      `
+      <h2 class="title sheet-title">En vez de ${esc(ing.nombre.toLowerCase())}</h2>
+      <p class="muted" style="margin-top: 4px">${esc(eq.grupo)} · equivale a ${esc(formatQty(ing.cantidad, ing.unidad))}</p>
+      <ul class="equiv-list">
+        ${eq.opciones.map((o) => `<li><span>${esc(o.nombre)}</span><span class="qty">${esc(o.cantidad)}</span></li>`).join("")}
+      </ul>
+      <p class="small muted">Si lo cambias, márcalo en "¿Qué comiste?" con «Cambiar».</p>`,
+      { label: `Equivalencias de ${ing.nombre}` },
+    );
+  }
+
   // "¿Qué comiste?": el menú de esa comida con una casilla por ingrediente.
   // - Palomear = lo comiste; su cantidad se vuelve editable (si comiste de menos, lo que sobró pasa a la reserva).
+  //   Si la cantidad trae número, solo se edita el número y la unidad queda fija al lado ("35" g).
   // - Lo no palomeado pasa a la reserva del día. Todo se puede despalomear, y "Desmarcar" deja la comida pendiente.
   // - "De la reserva": lo que sobró de otras comidas de hoy; palomearlo = lo comiste con esta.
   // - "Comí todo" palomea todo; "Me la brinqué" la marca como No (todo a la reserva).
@@ -270,10 +289,11 @@ export async function renderHoy(view, fechaParam) {
     const comio = prev?.estado === "cambiado" ? prev.comio : null;
     const yaComido = (nombre) => prev?.estado === "comido" || comio?.ingredientes.some((x) => !x.de && sameName(x.nombre, nombre));
 
-    const menuRows = editableFrom(comida).ingredientes.map((i) => {
+    const menuRows = editableFrom(comida).ingredientes.map((i, n) => {
       const saved = comio?.ingredientes.find((x) => !x.de && sameName(x.nombre, i.nombre));
       const on = Boolean(yaComido(i.nombre));
-      return { kind: "menu", nombre: i.nombre, base: i.cantidad, cantidad: saved?.cantidad ?? i.cantidad, on };
+      const eq = equivalentesDe(comida.ingredientes[n], grupos);
+      return { kind: "menu", nombre: i.nombre, base: i.cantidad, cantidad: saved?.cantidad ?? i.cantidad, on, eq };
     });
     const extraRows = comio ? diffMeal(comida, comio).agregados.map((x) => ({ kind: "extra", ...x, base: x.cantidad, on: true })) : [];
     const tomadas = (comio?.ingredientes || []).filter((x) => x.de).map((x) => ({ kind: "reserva", ...x, base: x.cantidad, on: true }));
@@ -281,6 +301,24 @@ export async function renderHoy(view, fechaParam) {
       .pendientes.filter((r) => r.de !== comida.momento)
       .map((r) => ({ kind: "reserva", nombre: r.nombre, de: r.de, base: r.cantidad, cantidad: r.cantidad, on: false }));
     const reservaRows = [...tomadas, ...disponibles];
+
+    // Con número: campo numérico + unidad fija. Sin número ("al gusto") o ingrediente nuevo: texto libre.
+    const qtyHTML = (r) => {
+      const q = splitQty(r.cantidad);
+      if (!q) {
+        return `<input class="field qty-input" name="cantidad" value="${esc(r.cantidad || "")}" placeholder="Cantidad" autocomplete="off" enterkeyhint="done" ${r.on ? "" : "disabled"} />`;
+      }
+      return `
+        <label class="qty-box${r.on ? "" : " is-off"}">
+          <input class="field qty-input qty-num" name="cantidad" value="${esc(q.num)}" data-unidad="${esc(q.unidad)}" inputmode="decimal" autocomplete="off" enterkeyhint="done" aria-label="Cantidad de ${esc(r.nombre)}${q.unidad ? ` en ${esc(q.unidad)}` : ""}" ${r.on ? "" : "disabled"} />
+          ${q.unidad ? `<span class="qty-unit">${esc(unidadPara(q.num, q.unidad))}</span>` : ""}
+        </label>`;
+    };
+    // Lo que se guarda sigue siendo texto ("35 g"), como siempre.
+    const qtyValue = (input) => {
+      const value = input.value.trim();
+      return input.classList.contains("qty-num") ? joinQty(value, input.dataset.unidad) || value : value;
+    };
 
     const row = (r) => `
       <li class="eat-row" data-kind="${r.kind}" data-nombre="${esc(r.nombre)}" data-de="${r.de || ""}" data-base="${esc(r.base || "")}">
@@ -290,9 +328,11 @@ export async function renderHoy(view, fechaParam) {
         ${
           r.kind === "extra" && !r.nombre
             ? `<input class="field eat-name-input" name="nombre" placeholder="Ingrediente" autocomplete="off" enterkeyhint="next" />`
-            : `<span class="eat-name">${esc(r.nombre)}${r.de ? `<span class="small muted">de ${esc(momentoLabel(r.de).toLowerCase())}</span>` : ""}</span>`
+            : `<span class="eat-name">${esc(r.nombre)}${r.de ? `<span class="small muted">de ${esc(momentoLabel(r.de).toLowerCase())}</span>` : ""}${
+                r.eq ? `<button type="button" class="link-btn eat-swap" data-swap>${icon("arrow-left-right")} Cambiar</button>` : ""
+              }</span>`
         }
-        <input class="field qty-input" name="cantidad" value="${esc(r.cantidad || "")}" placeholder="Cantidad" autocomplete="off" enterkeyhint="done" ${r.on ? "" : "disabled"} />
+        ${qtyHTML(r)}
       </li>`;
 
     const { sheet, close } = openSheet(
@@ -329,10 +369,59 @@ export async function renderHoy(view, fechaParam) {
       btn.setAttribute("aria-pressed", on);
       const qty = li.querySelector("[name=cantidad]");
       qty.disabled = !on;
-      if (!on) qty.value = li.dataset.base;
+      qty.closest(".qty-box")?.classList.toggle("is-off", !on);
+      if (!on) {
+        qty.value = qty.classList.contains("qty-num") ? splitQty(li.dataset.base)?.num ?? "" : li.dataset.base;
+        qty.dispatchEvent(new Event("input", { bubbles: true }));
+      }
     };
 
+    // «Cambiar»: debajo del ingrediente salen sus equivalentes (y el original, para volver).
+    // Al elegir uno, la fila pasa a ser ese ingrediente con su cantidad; al guardar cuenta como cambio.
+    const original = new Map(menuRows.filter((r) => r.eq).map((r) => [r.nombre, r]));
+    function toggleSwap(li) {
+      const next = li.nextElementSibling;
+      if (next?.classList.contains("swap-options")) return next.remove();
+      const r = original.get(li.dataset.original || li.dataset.nombre);
+      const opciones = [{ nombre: r.nombre, cantidad: r.base }, ...r.eq.opciones];
+      li.insertAdjacentHTML(
+        "afterend",
+        `<li class="swap-options">
+          <p class="small muted">${esc(r.eq.grupo)} · equivale a ${esc(r.base)}</p>
+          <div class="swap-chips">
+            ${opciones
+              .map((o) => `<button type="button" class="chip" data-pick="${esc(o.nombre)}" data-qty="${esc(o.cantidad)}" aria-pressed="${sameName(o.nombre, li.dataset.nombre)}">${esc(o.nombre)} · ${esc(o.cantidad)}</button>`)
+              .join("")}
+          </div>
+        </li>`,
+      );
+    }
+    function swapTo(li, nombre, cantidad) {
+      const origen = li.dataset.original || li.dataset.nombre;
+      const vuelve = sameName(nombre, origen);
+      li.dataset.original = origen;
+      li.dataset.nombre = nombre;
+      li.dataset.kind = vuelve ? "menu" : "extra";
+      li.dataset.base = cantidad;
+      li.querySelector(".eat-name").innerHTML = `${esc(nombre)}${vuelve ? "" : `<span class="small muted">en vez de ${esc(origen.toLowerCase())}</span>`}
+        <button type="button" class="link-btn eat-swap" data-swap>${icon("arrow-left-right")} Cambiar</button>`;
+      const qty = li.querySelector("[name=cantidad]");
+      (qty.closest(".qty-box") || qty).outerHTML = qtyHTML({ nombre, cantidad, on: true });
+      li.querySelector(".eat-check").setAttribute("aria-pressed", "true");
+      li.nextElementSibling?.classList.contains("swap-options") && li.nextElementSibling.remove();
+    }
+
+    // La unidad cambia con el número: 1 pieza, 2 piezas.
+    sheet.addEventListener("input", (e) => {
+      const input = e.target.closest(".qty-num");
+      const unit = input?.closest(".qty-box").querySelector(".qty-unit");
+      if (unit) unit.textContent = unidadPara(input.value, input.dataset.unidad);
+    });
+
     sheet.addEventListener("click", (e) => {
+      if (e.target.closest("[data-swap]")) return toggleSwap(e.target.closest(".eat-row"));
+      const pick = e.target.closest("[data-pick]");
+      if (pick) return swapTo(pick.closest(".swap-options").previousElementSibling, pick.dataset.pick, pick.dataset.qty);
       const check = e.target.closest(".eat-check");
       if (check) {
         const li = check.closest(".eat-row");
@@ -370,7 +459,7 @@ export async function renderHoy(view, fechaParam) {
         .map((li) => ({
           kind: li.dataset.kind,
           nombre: li.querySelector("[name=nombre]")?.value.trim() ?? li.dataset.nombre,
-          cantidad: li.querySelector("[name=cantidad]").value.trim(),
+          cantidad: qtyValue(li.querySelector("[name=cantidad]")),
           de: li.dataset.de || undefined,
         }))
         .filter((i) => i.nombre);
@@ -438,6 +527,9 @@ export async function renderHoy(view, fechaParam) {
       refresh(comida.momento);
       return;
     }
+
+    const equivBtn = event.target.closest("[data-equiv]");
+    if (comida && equivBtn) return showEquivalencias(comida.ingredientes.find((i) => sameName(i.nombre, equivBtn.dataset.equiv)));
 
     if (comida && action === "note") return askNote(comida);
 

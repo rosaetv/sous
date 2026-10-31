@@ -13,19 +13,20 @@ export const MARKS = [
 ];
 
 // Un ingrediente: nombre a la izquierda; cantidad y, debajo, la referencia casera ("¼ de pieza").
-export function ingredientHTML(ing) {
+// opts.equiv: tiene equivalencias → botón junto al nombre para verlas (lo maneja la pantalla).
+export function ingredientHTML(ing, opts) {
   const qty = formatQty(ing.cantidad, ing.unidad);
   const ref = String(ing.ref || "").trim().replace(/^\((.*)\)$/, "$1");
   return `
     <li>
-      <span>${esc(ing.nombre)}</span>
+      <span>${esc(ing.nombre)}${opts?.equiv === true ? ` <button type="button" class="equiv-btn" data-equiv="${esc(ing.nombre)}" aria-label="Equivalencias de ${esc(ing.nombre)}">${icon("arrow-left-right")}</button>` : ""}</span>
       <span class="qty">${esc(qty || ref)}${qty && ref ? `<span class="qty-ref">${esc(ref)}</span>` : ""}</span>
     </li>`;
 }
 
 // Lo que comiste frente al menú: lo no comido "a la reserva", la cantidad nueva con la del menú debajo,
 // lo agregado con "+" y lo que tomaste de la reserva con su comida de origen.
-function editedIngredientsHTML(comida, comio) {
+function editedIngredientsHTML(comida, comio, conEquiv) {
   const diff = diffMeal(comida, comio);
   const rows = comida.ingredientes.map((ing) => {
     if (diff.quitados.some((n) => sameName(n, ing.nombre))) {
@@ -35,7 +36,7 @@ function editedIngredientsHTML(comida, comio) {
     if (c) {
       return `<li class="is-changed"><span>${esc(ing.nombre)}</span><span class="qty">${esc(c.despues || "—")}<span class="qty-ref">menú: ${esc(c.antes || "—")}</span></span></li>`;
     }
-    return ingredientHTML(ing);
+    return ingredientHTML(ing, { equiv: conEquiv(ing) });
   });
   const added = diff.agregados.map(
     (a) => `<li class="is-added"><span>+ ${esc(a.nombre)}</span><span class="qty">${esc(a.cantidad || "")}</span></li>`,
@@ -60,7 +61,8 @@ function statusHTML(estado) {
 // comida: del menú. mark: la marca guardada (o undefined).
 // Tocar la tarjeta abre "¿Qué comiste?" (lo maneja la pantalla).
 // open: si una comida ya marcada muestra sus ingredientes (marcadas se pliegan para que lo pendiente destaque).
-export function mealCardHTML(comida, mark, { hasRecipe = false, open = false } = {}) {
+// conEquiv(ing): true si ese ingrediente tiene equivalencias.
+export function mealCardHTML(comida, mark, { hasRecipe = false, open = false, conEquiv = () => false } = {}) {
   const estado = mark?.estado || "";
   const folded = estado && !open;
   const label = estado === "cambiado" ? swapLabel(comida, mark) : "";
@@ -85,9 +87,9 @@ export function mealCardHTML(comida, mark, { hasRecipe = false, open = false } =
           : `
         ${
           estado === "cambiado" && mark.comio
-            ? editedIngredientsHTML(comida, mark.comio)
+            ? editedIngredientsHTML(comida, mark.comio, conEquiv)
             : comida.ingredientes.length
-              ? `<ul class="meal-ingredients">${comida.ingredientes.map(ingredientHTML).join("")}</ul>`
+              ? `<ul class="meal-ingredients">${comida.ingredientes.map((ing) => ingredientHTML(ing, { equiv: conEquiv(ing) })).join("")}</ul>`
               : ""
         }
         ${comida.nota ? `<p class="meal-note">${icon("lightbulb")}<span>${esc(comida.nota)}</span></p>` : ""}

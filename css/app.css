@@ -1464,6 +1464,105 @@ ol.prep-steps-list {
   padding: var(--space-2) var(--space-3);
 }
 
+/* Equivalencias: botón junto al ingrediente en Hoy, lista en su hoja y opciones en "¿Qué comiste?" */
+.equiv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: -8px 0 -8px -2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-primary-deep);
+  vertical-align: middle;
+}
+
+.equiv-btn .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.equiv-list {
+  margin: var(--space-4) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.equiv-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.equiv-list li:last-child {
+  border-bottom: 0;
+}
+
+.eat-swap {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  margin: 0 0 -6px;
+  padding: 0;
+  background: none;
+  color: var(--color-primary-deep);
+  font-size: var(--font-size-sm);
+}
+
+.eat-swap .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.swap-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0 var(--space-3);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.swap-options p {
+  margin: 0;
+}
+
+.swap-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Cantidad con unidad fija: el número se edita, la unidad queda al lado */
+.qty-box {
+  display: flex;
+  flex: 0 0 34%;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.eat-row .qty-box .qty-input {
+  flex: 1;
+  width: 0;
+  text-align: right;
+}
+
+.qty-unit {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.qty-box.is-off .qty-unit {
+  color: var(--color-text-faint);
+}
+
 .eat-row .qty-input:disabled {
   border-color: transparent;
   background: transparent;
