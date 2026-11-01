@@ -2,7 +2,7 @@
 // Todas las tablas se crean desde ya para no tener que migrar datos más adelante.
 
 // Nombre interno: no cambiarlo al renombrar la app, o los datos guardados quedarían en la base anterior.
-const DB_NAME = "show-up";
+const DB_NAME = "sous";
 const DB_VERSION = 1;
 
 let dbPromise;
@@ -13,10 +13,13 @@ function open() {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = () => {
         const db = request.result;
-        db.createObjectStore("kv"); // ajustes, plan, favoritos, notas
-        db.createObjectStore("exercises", { keyPath: "id" }); // ejercicios propios
-        db.createObjectStore("workouts", { keyPath: "id" }).createIndex("finishedAt", "finishedAt");
-        db.createObjectStore("measurements", { keyPath: "id" }).createIndex("date", "date");
+        db.createObjectStore("kv"); // versión del recetario y otros ajustes
+        db.createObjectStore("semanas", { keyPath: "inicio" }); // menú importado + intercambios
+        db.createObjectStore("marcas", { keyPath: "clave" }).createIndex("fecha", "fecha"); // clave "fecha|momento"
+        db.createObjectStore("checks"); // pasos del batch y artículos del súper palomeados
+        db.createObjectStore("listas", { keyPath: "semanaInicio" });
+        db.createObjectStore("recetas", { keyPath: "id" });
+        db.createObjectStore("fotos"); // clave: id de la receta (aparte, para que importar nunca las borre)
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
@@ -37,7 +40,7 @@ async function run(storeName, mode, action) {
   });
 }
 
-export const STORES = ["kv", "exercises", "workouts", "measurements"];
+export const STORES = ["kv", "semanas", "marcas", "checks", "listas", "recetas", "fotos"];
 
 export const db = {
   get: (store, key) => run(store, "readonly", (s) => s.get(key)),
@@ -46,4 +49,18 @@ export const db = {
   put: (store, value, key) => run(store, "readwrite", (s) => (key === undefined ? s.put(value) : s.put(value, key))),
   delete: (store, key) => run(store, "readwrite", (s) => s.delete(key)),
   clear: (store) => run(store, "readwrite", (s) => s.clear()),
+
+  // Varios cambios juntos: o se guardan todos o ninguno (si algo falla, no queda a medias).
+  // write recibe { semanas: objectStore, ... } y hace put/delete sin esperar.
+  async transaction(storeNames, write) {
+    const database = await open();
+    return new Promise((resolve, reject) => {
+      const tx = database.transaction(storeNames, "readwrite");
+      const stores = Object.fromEntries(storeNames.map((name) => [name, tx.objectStore(name)]));
+      write(stores);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error("No se guardó"));
+    });
+  },
 };
