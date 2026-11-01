@@ -1,389 +1,181 @@
-// Guardar y leer los datos de la app. Las pantallas solo hablan con este archivo.
+// Funciones para leer y guardar los datos de la app.
 
 import { db } from "./db.js";
-import { rangeLabel, todayISO } from "./logic/fechas.js";
+import { EXERCISES } from "./data/exercises.js";
+import { EXERCISES_EN } from "./data/exercises-en.js";
+import { lang } from "./i18n.js";
+import { COMPOUND_PATTERNS } from "./data/catalog.js";
+import { getPeriods, isPeriodDate, todayISO } from "./period.js";
 
-const now = () => new Date().toISOString();
+// ---------- Ejercicios ----------
 
-// ---------- Importar ----------
+let exerciseCache;
 
-// Antes de importar: ¿qué se va a reemplazar? (para pedir confirmación con un toque)
-export async function previewImport({ tipo, datos }) {
-  if (tipo !== "menu") return { needsConfirm: false };
-
-  const semanas = await db.getAll("semanas");
-  const overlapping = semanas.filter((s) => s.inicio <= datos.fin && s.fin >= datos.inicio);
-  if (!overlapping.length) return { needsConfirm: false };
-
-  const marcas = await db.getAll("marcas");
-  const marked = marcas.filter((m) => m.fecha >= datos.inicio && m.fecha <= datos.fin).length;
-  return { needsConfirm: true, replaces: overlapping.map((s) => rangeLabel(s.inicio, s.fin)), marked };
-}
-
-// Guarda lo importado. Devuelve un resumen corto para mostrar.
-export async function applyImport({ tipo, datos }) {
-  const summary =
-    tipo === "menu"
-      ? await importMenu(datos)
-      : tipo === "lista"
-        ? await importLista(datos)
-        : tipo === "equivalencias"
-          ? await importEquivalencias(datos)
-          : await importRecetario(datos);
-  // Cuándo fue la última importación de cada tipo (se ve en la pantalla Importar).
-  await db.put("kv", { at: now(), detalle: `${summary.title}${summary.detail ? ` · ${summary.detail}` : ""}` }, `importado|${tipo}`);
-  return summary;
-}
-
-// Última importación de cada tipo: { menu, lista, recetario } → { at, detalle } o null.
-// Para lo importado antes de guardar esto, se calcula de los datos.
-export async function lastImports() {
-  const [semanas, listas, recetas] = await Promise.all([db.getAll("semanas"), db.getAll("listas"), db.getAll("recetas")]);
-  const newest = (list) => list.reduce((best, x) => ((x.importadoEn || "") > (best?.importadoEn || "") ? x : best), null);
-  const fallback = {
-    menu: newest(semanas) && { at: newest(semanas).importadoEn, detalle: `Menú del ${rangeLabel(newest(semanas).inicio, newest(semanas).fin)}` },
-    lista: newest(listas) && { at: newest(listas).importadoEn, detalle: "Lista del súper" },
-    recetario: newest(recetas) && { at: newest(recetas).importadoEn, detalle: `Recetario · ${recetas.length} recetas` },
-  };
-  const out = {};
-  for (const tipo of ["menu", "lista", "recetario", "equivalencias"]) out[tipo] = (await db.get("kv", `importado|${tipo}`)) || fallback[tipo] || null;
-  return out;
-}
-
-// Reemplaza la semana con las mismas fechas. Las marcas no se tocan (viven aparte, por fecha y momento).
-async function importMenu(menu) {
-  const semanas = await db.getAll("semanas");
-  const overlapping = semanas.filter((s) => s.inicio <= menu.fin && s.fin >= menu.inicio);
-  const previous = semanas.find((s) => s.inicio === menu.inicio);
-
-  // Los intercambios de días se conservan si los dos días siguen en el menú nuevo.
-  const fechas = new Set(menu.dias.map((d) => d.fecha));
-  const intercambios = Object.fromEntries(
-    Object.entries(previous?.intercambios || {}).filter(([fecha, origen]) => fechas.has(fecha) && fechas.has(origen)),
-  );
-
-  const { tipo, ...semana } = menu;
-  await db.transaction(["semanas"], ({ semanas: store }) => {
-    overlapping.forEach((s) => store.delete(s.inicio));
-    store.put({ ...semana, intercambios, importadoEn: now() });
-  });
-
-  const comidas = menu.dias.reduce((sum, d) => sum + d.comidas.length, 0);
-  return {
-    title: `Menú del ${rangeLabel(menu.inicio, menu.fin)}`,
-    detail: `${plural(menu.dias.length, "día", "días")} · ${plural(comidas, "comida", "comidas")}${menu.batch.length ? " · batch" : ""}`,
-    replaced: overlapping.length > 0,
-    // Un menú que aún no empieza (lo normal: lo importas el fin de semana): se abre esa semana.
-    // Hoy sigue mostrando tu día de hoy.
-    go: menu.inicio > todayISO() ? { href: `#/semana/${menu.inicio}`, label: "Ver la semana" } : { href: "#/hoy", label: "Ver Hoy" },
-  };
-}
-
-// La lista se reemplaza; lo palomeado se guarda aparte por nombre, así que sigue palomeado.
-async function importLista(lista) {
-  const previous = await db.get("listas", lista.semanaInicio);
-  const { tipo, ...rest } = lista;
-  await db.put("listas", { ...rest, importadoEn: now() });
-  return {
-    title: "Lista del súper",
-    detail: `${plural(lista.items.length, "artículo", "artículos")}${lista.totalEstimado != null ? ` · ${formatMoney(lista.totalEstimado)}` : ""}`,
-    replaced: Boolean(previous),
-    go: { href: "#/super", label: "Ver Súper" },
-  };
-}
-
-// Actualiza cada receta por id. Las fotos viven aparte: importar nunca las toca.
-// Las recetas que ya no vienen en el recetario se quedan (no se borra nada).
-// Las equivalencias se reemplazan completas (siempre llega la lista entera).
-async function importEquivalencias(datos) {
-  await db.put("kv", { version: datos.version, grupos: datos.grupos, importadoEn: now() }, "equivalencias");
-  const n = datos.grupos.length;
-  return { title: "Equivalencias", detail: `${n} ${n === 1 ? "grupo" : "grupos"}` };
-}
-
-export async function equivalencias() {
-  return (await db.get("kv", "equivalencias"))?.grupos || [];
-}
-
-async function importRecetario(recetario) {
-  const existing = new Set(await db.getAllKeys("recetas"));
-  const nuevas = recetario.recetas.filter((r) => !existing.has(r.id)).length;
-  await db.transaction(["recetas", "kv"], ({ recetas, kv }) => {
-    recetario.recetas.forEach((r) => recetas.put({ ...r, importadoEn: now() }));
-    kv.put(recetario.version, "recetarioVersion");
-  });
-  const actualizadas = recetario.recetas.length - nuevas;
-  return {
-    title: `Recetario${recetario.version ? ` (${recetario.version})` : ""}`,
-    detail: [nuevas && plural(nuevas, "nueva", "nuevas"), actualizadas && plural(actualizadas, "actualizada", "actualizadas")]
-      .filter(Boolean)
-      .join(" · "),
-    replaced: false,
-    go: { href: "#/recetas", label: "Ver Recetas" },
-  };
-}
-
-const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
-
-export function formatMoney(value) {
-  return value.toLocaleString("es", { style: "currency", currency: "EUR" });
-}
-
-// ---------- Leer ----------
-
-export async function counts() {
-  const [semanas, listas, recetas] = await Promise.all([db.getAllKeys("semanas"), db.getAllKeys("listas"), db.getAllKeys("recetas")]);
-  return { semanas: semanas.length, listas: listas.length, recetas: recetas.length };
-}
-
-// ---------- Un día ----------
-
-// La semana importada que incluye esa fecha (o null).
-export async function weekFor(fecha) {
-  const semanas = await db.getAll("semanas");
-  return semanas.find((s) => s.inicio <= fecha && s.fin >= fecha) || null;
-}
-
-// Qué toca comer en una fecha, ya con los intercambios aplicados.
-// Las etiquetas (oficina, gym…) son de la fecha; las comidas y macros, del menú que se come ese día.
-export function dayPlan(semana, fecha) {
-  if (!semana) return null;
-  const own = semana.dias.find((d) => d.fecha === fecha);
-  const origen = semana.intercambios?.[fecha] || fecha;
-  const menu = semana.dias.find((d) => d.fecha === origen);
-  if (!menu) return null;
-  return {
-    fecha,
-    origen, // si es distinto de fecha, hoy comes el menú de otro día
-    etiquetas: own?.etiquetas || [],
-    etiquetasOrigen: menu.etiquetas,
-    comidas: menu.comidas,
-    macros: menu.macros,
-  };
-}
-
-export async function marksFor(fecha) {
-  const database = await db.getAll("marcas");
-  return Object.fromEntries(database.filter((m) => m.fecha === fecha).map((m) => [m.momento, m]));
-}
-
-export async function marksBetween(inicio, fin) {
-  return (await db.getAll("marcas")).filter((m) => m.fecha >= inicio && m.fecha <= fin);
-}
-
-// Marca una comida. Guarda también el plato del menú, para que el resumen
-// siga siendo correcto aunque después cambie el menú o intercambies días.
-export async function setMark(fecha, comida, { estado, sustituto = "", comio = null }) {
-  const clave = `${fecha}|${comida.momento}`;
-  const previous = await db.get("marcas", clave);
-  const mark = {
-    ...previous,
-    clave,
-    fecha,
-    momento: comida.momento,
-    estado,
-    sustituto: estado === "cambiado" ? sustituto : "",
-    // Lo que de verdad comiste ({ plato, ingredientes }), si lo editaste al marcar "Cambiado".
-    comio: estado === "cambiado" ? comio : null,
-    plato: comida.plato,
-    recetaId: comida.recetaId,
-    marcadoEn: now(),
-  };
-  await db.put("marcas", mark);
-  return mark;
-}
-
-export async function clearMark(fecha, momento) {
-  await db.delete("marcas", `${fecha}|${momento}`);
-}
-
-// 👍 / 👎 y nota corta, sobre una comida ya marcada.
-export async function updateMark(fecha, momento, changes) {
-  const clave = `${fecha}|${momento}`;
-  const mark = await db.get("marcas", clave);
-  if (!mark) return null;
-  const updated = { ...mark, ...changes };
-  await db.put("marcas", updated);
-  return updated;
-}
-
-// Intercambia los menús de dos días de la misma semana (el día completo).
-// Hacerlo otra vez con los mismos días lo deshace.
-export async function swapDays(inicio, a, b) {
-  const semana = await db.get("semanas", inicio);
-  const map = { ...(semana.intercambios || {}) };
-  const origenA = map[a] || a;
-  const origenB = map[b] || b;
-  map[a] = origenB;
-  map[b] = origenA;
-  // Sin entradas que apunten a sí mismas: así "sin intercambios" queda vacío.
-  for (const [fecha, origen] of Object.entries(map)) if (fecha === origen) delete map[fecha];
-  await db.put("semanas", { ...semana, intercambios: map });
-  return map;
-}
-
-export async function recipeIds() {
-  return new Set(await db.getAllKeys("recetas"));
-}
-
-// Map de id → receta (para enlazar los pasos del batch con su receta y tiempo).
-export async function recipesById() {
-  return new Map((await db.getAll("recetas")).map((r) => [r.id, r]));
-}
-
-// ---------- Semanas ----------
-
-export async function allWeeks() {
-  return (await db.getAll("semanas")).sort((a, b) => (a.inicio < b.inicio ? -1 : 1));
-}
-
-// La semana para abrir por defecto: la de hoy; si no hay, la próxima; si no, la última.
-export function defaultWeek(semanas, today) {
-  return (
-    semanas.find((s) => s.inicio <= today && s.fin >= today) ||
-    semanas.find((s) => s.inicio > today) ||
-    semanas.at(-1) ||
-    null
-  );
-}
-
-// ---------- Palomitas (batch y súper) ----------
-// Clave: "2026-10-19|batch|0|1" o "2026-10-19|super|avena".
-
-export async function checksWithPrefix(prefix) {
-  return new Set((await db.getAllKeys("checks")).filter((k) => k.startsWith(prefix)));
-}
-
-// value: true (hecho) o un objeto con más detalle, como { estado: "parcial", llevo: "2 latas" }.
-// Falso o vacío: se quita la palomita.
-export async function setCheck(key, value) {
-  if (value) await db.put("checks", value, key);
-  else await db.delete("checks", key);
-}
-
-// Las palomitas con su valor: Map de clave → valor.
-export async function checksMap(prefix) {
-  const database = await db.getAllKeys("checks");
-  const keys = database.filter((k) => k.startsWith(prefix));
-  const values = await Promise.all(keys.map((k) => db.get("checks", k)));
-  return new Map(keys.map((k, i) => [k, values[i]]));
-}
-
-// ---------- Súper ----------
-
-export async function allLists() {
-  return (await db.getAll("listas")).sort((a, b) => (a.semanaInicio < b.semanaInicio ? -1 : 1));
-}
-
-// La lista para abrir por defecto: la última que importaste (normalmente vas al súper justo después).
-export function defaultList(listas) {
-  return listas.reduce((best, l) => (!best || (l.importadoEn || "") > (best.importadoEn || "") ? l : best), null);
-}
-
-export async function clearChecks(prefix) {
-  const keys = await checksWithPrefix(prefix);
-  await db.transaction(["checks"], ({ checks }) => keys.forEach((k) => checks.delete(k)));
-}
-
-// ---------- Recetas y fotos ----------
-
-export async function allRecipes() {
-  return (await db.getAll("recetas")).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
-}
-
-export function getRecipe(id) {
-  return db.get("recetas", id);
-}
-
-// Fotos de todas las recetas: Map de id → { blob, origen, url }.
-export async function allPhotos() {
-  const [keys, values] = await Promise.all([db.getAllKeys("fotos"), db.getAll("fotos")]);
-  return new Map(keys.map((k, i) => [k, values[i]]));
-}
-
-export function getPhoto(id) {
-  return db.get("fotos", id);
-}
-
-// origen "usuario": la pusiste tú (nunca se reemplaza sola). origen "url": copia de imagenUrl.
-export function savePhoto(id, blob, origen, url = "") {
-  return db.put("fotos", { blob, origen, url, actualizadoEn: now() }, id);
-}
-
-export function deletePhoto(id) {
-  return db.delete("fotos", id);
-}
-
-// Borra una receta y su foto. Se anota (con la fecha) para decírselo a Claude en el resumen de esa semana.
-// Si después importas un recetario que la trae, vuelve.
-export async function deleteRecipe(receta) {
-  const borradas = (await db.get("kv", "recetasBorradas")) || [];
-  await db.transaction(["recetas", "fotos", "kv"], (s) => {
-    s.recetas.delete(receta.id);
-    s.fotos.delete(receta.id);
-    s.kv.put([...borradas, { id: receta.id, nombre: receta.nombre, fecha: todayISO() }], "recetasBorradas");
-  });
-}
-
-export async function recetasBorradas() {
-  return (await db.get("kv", "recetasBorradas")) || [];
-}
-
-// Guarda en el teléfono la foto de imagenUrl, para verla sin conexión.
-// Solo si no pusiste una tuya. Si el sitio no deja descargarla, no pasa nada:
-// se sigue viendo con internet (y el modo sin conexión la guarda al verla).
-export async function cacheRecipeImage(receta) {
-  if (!receta.imagenUrl) return false;
-  const existing = await getPhoto(receta.id);
-  if (existing && (existing.origen === "usuario" || existing.url === receta.imagenUrl)) return false;
-  try {
-    const response = await fetch(receta.imagenUrl, { mode: "cors" });
-    if (!response.ok) return false;
-    const blob = await response.blob();
-    if (!blob.type.startsWith("image/")) return false;
-    // Mientras se descargaba pudiste poner tu foto: la tuya gana.
-    if ((await getPhoto(receta.id))?.origen === "usuario") return false;
-    await savePhoto(receta.id, blob, "url", receta.imagenUrl);
-    return true;
-  } catch {
-    return false;
+export async function getAllExercises() {
+  if (!exerciseCache) {
+    const custom = await db.getAll("exercises");
+    // En inglés se usan los textos traducidos; tus ejercicios propios quedan como los escribiste.
+    const builtIn = lang() === "en" ? EXERCISES.map((e) => ({ ...e, ...EXERCISES_EN[e.id] })) : EXERCISES;
+    exerciseCache = [...builtIn, ...custom.map((e) => ({ ...e, custom: true }))];
   }
+  return exerciseCache;
 }
 
-// ---------- Resumen para Claude ----------
-
-export async function summaryData(semana) {
-  const plans = semana.dias.map((d) => dayPlan(semana, d.fecha)).filter(Boolean);
-  const [marks, lista] = await Promise.all([marksBetween(semana.inicio, semana.fin), db.get("listas", semana.inicio)]);
-  const prefix = `${semana.inicio}|super|`;
-  const listChecks = new Map([...(await checksMap(prefix))].map(([k, v]) => [k.slice(prefix.length), v]));
-  const borradas = (await recetasBorradas()).filter((b) => b.fecha >= semana.inicio && b.fecha <= semana.fin);
-  return { semana, plans, marks, lista: lista || null, listChecks, borradas };
+export async function getExercise(id) {
+  return (await getAllExercises()).find((e) => e.id === id);
 }
 
-// ---------- Borrar una semana ----------
-// Borra el menú, las marcas de esos días, las palomitas (batch y súper) y la lista del súper.
-export async function deleteWeek(inicio) {
-  const semana = await db.get("semanas", inicio);
-  if (!semana) return;
-  const marcas = await marksBetween(semana.inicio, semana.fin);
-  const checks = await checksWithPrefix(`${inicio}|`);
-  await db.transaction(["semanas", "marcas", "checks", "listas"], (s) => {
-    s.semanas.delete(inicio);
-    marcas.forEach((m) => s.marcas.delete(m.clave));
-    checks.forEach((k) => s.checks.delete(k));
-    s.listas.delete(inicio);
-  });
+export async function saveCustomExercise(exercise) {
+  const { custom, ...data } = exercise;
+  await db.put("exercises", data);
+  exerciseCache = undefined;
 }
 
-// Lo que has dicho de una receta cada vez que la comiste: para ver de un vistazo si funciona.
-export async function recipeHistory(recetaId) {
-  const marks = (await db.getAll("marcas")).filter((m) => m.recetaId === recetaId).sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
-  return {
-    comida: marks.filter((m) => m.estado === "comido").length,
-    cambiada: marks.filter((m) => m.estado !== "comido").length,
-    up: marks.filter((m) => m.valoracion === "up").length,
-    down: marks.filter((m) => m.valoracion === "down").length,
-    notas: marks.filter((m) => m.nota).map((m) => ({ fecha: m.fecha, nota: m.nota, valoracion: m.valoracion })),
-  };
+export async function deleteCustomExercise(id) {
+  await db.delete("exercises", id);
+  exerciseCache = undefined;
+}
+
+export function isCompound(exercise) {
+  return COMPOUND_PATTERNS.has(exercise.pattern);
+}
+
+// ---------- Favoritos y notas ----------
+
+// favorites: { exercises: [favoritos], equipment: [equipo favorito], disliked: [no me gustan] }
+export async function getFavorites() {
+  const favorites = (await db.get("kv", "favorites")) || { exercises: [], equipment: [] };
+  favorites.disliked ||= [];
+  return favorites;
+}
+
+export async function toggleFavoriteExercise(id) {
+  const favorites = await getFavorites();
+  const list = new Set(favorites.exercises);
+  list.has(id) ? list.delete(id) : list.add(id);
+  favorites.exercises = [...list];
+  // Un favorito no puede estar también en "no me gusta".
+  if (list.has(id)) favorites.disliked = favorites.disliked.filter((x) => x !== id);
+  await db.put("kv", favorites, "favorites");
+  return list.has(id);
+}
+
+export async function toggleDislikedExercise(id) {
+  const favorites = await getFavorites();
+  const list = new Set(favorites.disliked);
+  list.has(id) ? list.delete(id) : list.add(id);
+  favorites.disliked = [...list];
+  if (list.has(id)) favorites.exercises = favorites.exercises.filter((x) => x !== id);
+  await db.put("kv", favorites, "favorites");
+  return list.has(id);
+}
+
+export async function setFavoriteEquipment(equipment) {
+  const favorites = await getFavorites();
+  favorites.equipment = equipment;
+  await db.put("kv", favorites, "favorites");
+}
+
+export async function getNotes() {
+  return (await db.get("kv", "notes")) || {};
+}
+
+export async function setNote(exerciseId, text) {
+  const notes = await getNotes();
+  if (text.trim()) notes[exerciseId] = text.trim();
+  else delete notes[exerciseId];
+  await db.put("kv", notes, "notes");
+}
+
+// ---------- Plan semanal ----------
+
+export const getPlan = () => db.get("kv", "plan");
+export const savePlan = (plan) => db.put("kv", plan, "plan");
+
+export const getDraft = () => db.get("kv", "draft");
+export const saveDraft = (draft) => db.put("kv", draft, "draft");
+export const deleteDraft = () => db.delete("kv", "draft");
+
+// ---------- Entrenamientos ----------
+
+// Entrenamiento en curso: se guarda en cada cambio para no perder nada si se cierra la app.
+export const getActiveWorkout = () => db.get("kv", "active");
+export const saveActiveWorkout = (workout) => db.put("kv", workout, "active");
+export const clearActiveWorkout = () => db.delete("kv", "active");
+
+export const saveWorkout = (workout) => db.put("workouts", workout);
+
+// Entrenamientos terminados, del más reciente al más antiguo.
+export async function getWorkouts() {
+  const all = await db.getAll("workouts");
+  return all.sort((a, b) => b.finishedAt.localeCompare(a.finishedAt));
+}
+
+export const getWorkout = (id) => db.get("workouts", id);
+export const deleteWorkout = (id) => db.delete("workouts", id);
+
+// Todas las sesiones de un ejercicio, de la más antigua a la más reciente.
+export async function getExerciseHistory(exerciseId) {
+  const sessions = [];
+  for (const workout of await getWorkouts()) {
+    if (workout.extra) continue; // Core DIY va en segundos: no entra en la progresión ni en los récords
+    const entry = workout.exercises.find((e) => e.exerciseId === exerciseId);
+    if (entry?.sets.length) sessions.push({ date: workout.finishedAt, workoutId: workout.id, ...entry });
+  }
+  return sessions.reverse();
+}
+
+// Series de la última vez que se hizo un ejercicio.
+// Las sesiones de descarga no cuentan: la progresión sigue desde antes de la descarga.
+// Las sesiones de días de período no cuentan como referencia si hay una sesión normal:
+// así un día más ligero no baja la siguiente sugerencia.
+export async function getLastPerformance(exerciseId) {
+  const periods = (await getProfile()).trackPeriod ? await getPeriods() : [];
+  let periodFallback = null;
+  for (const workout of await getWorkouts()) {
+    if (workout.deload || workout.extra) continue;
+    const entry = workout.exercises.find((e) => e.exerciseId === exerciseId);
+    if (!entry?.sets.length) continue;
+    const found = { date: workout.finishedAt, sets: entry.sets, effort: entry.effort };
+    if (!isPeriodDate(periods, todayISO(new Date(workout.finishedAt)))) return found;
+    periodFallback ||= found;
+  }
+  return periodFallback;
+}
+
+// Lunes a las 00:00 de la semana de la fecha dada.
+export function startOfWeek(date = new Date()) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+}
+
+
+// ---------- Peso y medidas ----------
+
+// Cada registro: { id, date: "2026-10-10", values: { peso: 60.5, cintura: 70, ... } }
+export async function getMeasurements() {
+  const all = await db.getAll("measurements");
+  return all.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+}
+export const saveMeasurement = (record) => db.put("measurements", record);
+export const deleteMeasurement = (id) => db.delete("measurements", id);
+
+// Últimas respuestas del cuestionario, para rellenarlo la próxima vez.
+export async function getPrefs() {
+  return (await db.get("kv", "prefs")) || {};
+}
+export const savePrefs = (prefs) => db.put("kv", prefs, "prefs");
+
+// ---------- Perfil ----------
+
+export async function getProfile() {
+  return (await db.get("kv", "profile")) || {};
+}
+export const saveProfile = (profile) => db.put("kv", profile, "profile");
+
+// Para volver a leer los ejercicios propios después de importar o borrar.
+export function resetExerciseCache() {
+  exerciseCache = undefined;
 }

@@ -1,106 +1,141 @@
-// Respaldo: todos tus datos (con las fotos) en un archivo JSON, para no perder nada si se borra Safari
-// o cambias de teléfono. El archivo es tuyo: nunca se sube a ningún lado.
+// Respaldo: exportar e importar todos los datos, y borrar por categorías.
 
 import { db, STORES } from "./db.js";
-import { todayISO } from "./logic/fechas.js";
-import { APP_VERSION } from "./version.js";
+import { resetExerciseCache } from "./store.js";
+import { t } from "./i18n.js";
 
-const FORMAT = 1;
-const KEYED = ["kv", "checks", "fotos"]; // tablas sin clave dentro del valor: se guardan como [clave, valor]
+// Nombre interno de los respaldos: se mantiene para poder importar respaldos anteriores.
+const APP = "show-up";
+const VERSION = 1;
 
-function blobToDataURL(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
+// ---------- Exportar ----------
+
+export async function exportData() {
+  const data = { app: APP, version: VERSION, exportedAt: new Date().toISOString(), kv: {} };
+  for (const key of await db.getAllKeys("kv")) data.kv[key] = await db.get("kv", key);
+  data.exercises = await db.getAll("exercises");
+  data.workouts = await db.getAll("workouts");
+  data.measurements = await db.getAll("measurements");
+  return data;
 }
 
-export async function exportAll() {
-  const data = {};
-  for (const store of STORES) {
-    if (KEYED.includes(store)) {
-      const [keys, values] = await Promise.all([db.getAllKeys(store), db.getAll(store)]);
-      data[store] = keys.map((k, i) => [k, values[i]]);
-    } else {
-      data[store] = await db.getAll(store);
-    }
-  }
-  // Las fotos van dentro del archivo, como texto (base64).
-  data.fotos = await Promise.all(data.fotos.map(async ([id, foto]) => [id, { ...foto, blob: await blobToDataURL(foto.blob) }]));
-  return { app: "sous", tipo: "respaldo", formato: FORMAT, version: APP_VERSION, creado: new Date().toISOString(), data };
-}
+/** Guarda el archivo: en el iPhone abre el menú de compartir; en la computadora lo descarga. */
+export async function downloadBackup() {
+  const data = await exportData();
+  const date = data.exportedAt.slice(0, 10);
+  const name = `showup-respaldo-${date}.json`;
+  const file = new File([JSON.stringify(data, null, 2)], name, { type: "application/json" });
 
-// Guarda el archivo: en el iPhone abre "Compartir" (Guardar en Archivos, AirDrop…).
-export async function exportBackup() {
-  const json = await exportAll();
-  const name = `sous-respaldo-${todayISO()}.json`;
-  const blob = new Blob([JSON.stringify(json)], { type: "application/json" });
-  const file = new File([blob], name, { type: "application/json" });
-
-  if (navigator.canShare?.({ files: [file] })) {
+  const isTouch = matchMedia("(pointer: coarse)").matches;
+  if (isTouch && navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: "Respaldo de Sous" });
+      await navigator.share({ files: [file], title: t("backup.shareTitle") });
     } catch (error) {
-      if (error.name === "AbortError") return false; // la cerraste sin guardar
+      if (error.name === "AbortError") return false; // Se canceló el menú de compartir.
       throw error;
     }
   } else {
-    const url = URL.createObjectURL(blob);
-    const a = Object.assign(document.createElement("a"), { href: url, download: name });
-    document.body.append(a);
-    a.click();
-    a.remove();
+    const url = URL.createObjectURL(file);
+    const link = Object.assign(document.createElement("a"), { href: url, download: name });
+    document.body.append(link);
+    link.click();
+    link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  await db.put("kv", new Date().toISOString(), "ultimoRespaldo");
+  await db.put("kv", new Date().toISOString(), "lastBackup");
   return true;
 }
 
-// Lee y revisa un archivo de respaldo. Devuelve el contenido o lanza un error con un mensaje claro.
-export async function readBackup(file) {
-  let json;
+export const getLastBackup = () => db.get("kv", "lastBackup");
+
+// "Más tarde" en el recordatorio: lo oculta unos días.
+export const getBackupSnooze = () => db.get("kv", "backupSnooze");
+export const snoozeBackup = (days) => db.put("kv", new Date(Date.now() + days * 86400000).toISOString(), "backupSnooze");
+
+// Espacio que usa la app en el dispositivo (en MB), si el navegador lo informa.
+export async function storageUsage() {
+  const estimate = await navigator.storage?.estimate?.();
+  return estimate?.usage != null ? estimate.usage / (1024 * 1024) : null;
+}
+
+// ---------- Importar ----------
+
+/** Lee y revisa un archivo de respaldo. Lanza un error con un mensaje claro si no es válido. */
+export async function readBackupFile(file) {
+  let data;
   try {
-    json = JSON.parse(await file.text());
+    data = JSON.parse(await file.text());
   } catch {
-    throw new Error("Ese archivo no es un respaldo de Sous.");
+    throw new Error(t("backup.errorRead"));
   }
-  if (json?.app !== "sous" || json.tipo !== "respaldo" || typeof json.data !== "object") {
-    throw new Error("Ese archivo no es un respaldo de Sous.");
+  if (data?.app !== APP || typeof data.kv !== "object" || !Array.isArray(data.workouts)) {
+    throw new Error(t("backup.errorNotBackup"));
   }
-  if (json.formato > FORMAT) throw new Error("Ese respaldo es de una versión más nueva de Sous. Actualiza la app primero.");
-  return json;
+  if (data.version > VERSION) {
+    throw new Error(t("backup.errorNewer"));
+  }
+  return data;
 }
 
-// Cuánto trae, para confirmarlo antes de reemplazar.
-export function describeBackup(json) {
-  const d = json.data;
-  return {
-    creado: json.creado,
-    semanas: d.semanas?.length || 0,
-    recetas: d.recetas?.length || 0,
-    fotos: d.fotos?.length || 0,
-  };
+/** Reemplaza todos los datos actuales por los del respaldo. */
+export async function importData(data) {
+  for (const store of STORES) await db.clear(store);
+  for (const [key, value] of Object.entries(data.kv)) await db.put("kv", value, key);
+  for (const item of data.exercises || []) await db.put("exercises", item);
+  for (const item of data.workouts || []) await db.put("workouts", item);
+  for (const item of data.measurements || []) await db.put("measurements", item);
+  resetExerciseCache();
 }
 
-// Reemplaza todos tus datos por los del respaldo, en un solo paso: si algo falla, no queda a medias.
-export async function restoreBackup(json) {
-  const fotos = await Promise.all(
-    (json.data.fotos || []).map(async ([id, foto]) => [id, { ...foto, blob: await (await fetch(foto.blob)).blob() }]),
-  );
-  const data = { ...json.data, fotos };
-  await db.transaction(STORES, (stores) => {
-    for (const store of STORES) {
-      stores[store].clear();
-      for (const record of data[store] || []) {
-        if (KEYED.includes(store)) stores[store].put(record[1], record[0]);
-        else stores[store].put(record);
-      }
-    }
+// ---------- Borrar por categorías ----------
+
+// Nombre y descripción de cada categoría: "delete.<clave>" y "delete.<clave>Detail".
+export const DELETE_CATEGORIES = {};
+for (const key of ["workouts", "measurements", "period", "goals", "plan", "customExercises", "favorites", "prefs", "profile"]) {
+  Object.defineProperty(DELETE_CATEGORIES, key, {
+    get: () => ({ label: t(`delete.${key}`), detail: t(`delete.${key}Detail`) }),
+    enumerable: true,
   });
 }
 
-export async function lastBackup() {
-  return db.get("kv", "ultimoRespaldo");
+export async function deleteData(categories) {
+  const has = (c) => categories.includes(c);
+
+  if (has("workouts")) {
+    await db.clear("workouts");
+    await db.delete("kv", "active");
+  }
+  if (has("measurements")) await db.clear("measurements");
+  if (has("period")) await db.delete("kv", "periods");
+  if (has("goals")) {
+    await db.delete("kv", "goals");
+    await db.delete("kv", "victories");
+  }
+  if (has("plan")) {
+    await db.delete("kv", "plan");
+    await db.delete("kv", "draft");
+  }
+  if (has("customExercises")) {
+    // Quita también sus favoritos y notas para no dejar restos.
+    const ids = await db.getAllKeys("exercises");
+    const favorites = await db.get("kv", "favorites");
+    if (favorites) {
+      favorites.exercises = favorites.exercises.filter((id) => !ids.includes(id));
+      await db.put("kv", favorites, "favorites");
+    }
+    const notes = await db.get("kv", "notes");
+    if (notes) {
+      ids.forEach((id) => delete notes[id]);
+      await db.put("kv", notes, "notes");
+    }
+    await db.clear("exercises");
+  }
+  if (has("favorites")) {
+    await db.delete("kv", "favorites");
+    await db.delete("kv", "notes");
+    await db.delete("kv", "units");
+  }
+  if (has("prefs")) await db.delete("kv", "prefs");
+  if (has("profile")) await db.delete("kv", "profile");
+  resetExerciseCache();
 }

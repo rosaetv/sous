@@ -1,6 +1,6 @@
-// Registro del service worker (modo sin internet) y aviso de "versión nueva".
+// Registro del service worker y aviso de "nueva versión disponible".
 
-let registration = null;
+import { t } from "./i18n.js";
 
 export function setupPWA() {
   if (!("serviceWorker" in navigator)) return;
@@ -9,29 +9,26 @@ export function setupPWA() {
   const local = ["localhost", "127.0.0.1"].includes(location.hostname);
   if (local && !new URLSearchParams(location.search).has("sw")) return;
 
-  navigator.serviceWorker
-    .register("sw.js")
-    .then((reg) => {
-      registration = reg;
-      // Ya había una versión nueva esperando.
-      if (registration.waiting && navigator.serviceWorker.controller) showUpdate(registration.waiting);
+  navigator.serviceWorker.register("sw.js").then((registration) => {
+    // Ya había una versión nueva esperando.
+    if (registration.waiting && navigator.serviceWorker.controller) showUpdate(registration.waiting);
 
-      registration.addEventListener("updatefound", () => {
-        const worker = registration.installing;
-        worker?.addEventListener("statechange", () => {
-          if (worker.state === "installed" && navigator.serviceWorker.controller) showUpdate(worker);
-        });
+    registration.addEventListener("updatefound", () => {
+      const worker = registration.installing;
+      worker?.addEventListener("statechange", () => {
+        // "installed" con una versión anterior activa = hay actualización.
+        if (worker.state === "installed" && navigator.serviceWorker.controller) showUpdate(worker);
       });
-
-      // Al volver a abrir la app desde la pantalla de inicio, busca versiones nuevas.
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") registration.update().catch(() => {});
-      });
-    })
-    .catch((error) => {
-      // Si el navegador no lo permite, la app funciona igual (solo que sin modo sin internet).
-      console.warn("Sin modo sin conexión:", error.message);
     });
+
+    // Al volver a abrir la app desde la pantalla de inicio, busca versiones nuevas.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") registration.update().catch(() => {});
+    });
+  }).catch((error) => {
+    // Si el navegador no lo permite, la app funciona igual (solo que sin modo sin conexión).
+    console.warn("Sin modo sin conexión:", error.message);
+  });
 
   // Cuando la versión nueva toma el control, recarga para usarla.
   // En la primera visita no hay versión anterior: no hace falta recargar.
@@ -44,6 +41,36 @@ export function setupPWA() {
   });
 }
 
+// Botón "Buscar actualizaciones" de Perfil.
+// Devuelve "update", "latest", "offline", "error" o "unsupported".
+export async function checkForUpdates() {
+  if (!("serviceWorker" in navigator)) return "unsupported";
+  const registration = await navigator.serviceWorker.getRegistration();
+  if (!registration) return "unsupported"; // en la computadora de desarrollo
+  if (registration.waiting) {
+    showUpdate(registration.waiting);
+    return "update";
+  }
+  try {
+    await registration.update();
+  } catch {
+    return navigator.onLine ? "error" : "offline";
+  }
+  const worker = registration.installing || registration.waiting;
+  if (!worker) return "latest";
+  // Espera a que termine de descargarse la versión nueva.
+  await new Promise((resolve) => {
+    const check = () => {
+      if (worker.state === "installed" || worker.state === "redundant") resolve();
+    };
+    worker.addEventListener("statechange", check);
+    check();
+  });
+  if (worker.state !== "installed") return "error";
+  showUpdate(worker);
+  return "update";
+}
+
 function showUpdate(worker) {
   if (document.getElementById("update-bar")) return;
   const bar = document.createElement("div");
@@ -51,26 +78,8 @@ function showUpdate(worker) {
   bar.className = "update-bar";
   bar.setAttribute("role", "status");
   bar.innerHTML = `
-    <span>Hay una versión nueva de Sous.</span>
-    <button class="btn btn-primary" type="button">Actualizar</button>`;
+    <span>${t("pwa.updateReady")}</span>
+    <button class="btn-small" type="button">${t("pwa.update")}</button>`;
   bar.querySelector("button").addEventListener("click", () => worker.postMessage("skipWaiting"));
   document.body.append(bar);
-}
-
-// "Buscar actualizaciones" en Ajustes. Devuelve "updating", "latest" u "offline".
-export async function checkForUpdates() {
-  if (!registration) return "offline";
-  try {
-    await registration.update();
-  } catch {
-    return "offline";
-  }
-  // Si hay una versión esperando (o se está instalando), muestra la barra de "Actualizar".
-  const worker = registration.waiting || registration.installing;
-  if (worker) {
-    if (registration.waiting) showUpdate(registration.waiting);
-    else worker.addEventListener("statechange", () => worker.state === "installed" && showUpdate(worker));
-    return "updating";
-  }
-  return "latest";
 }

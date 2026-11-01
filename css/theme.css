@@ -1,93 +1,94 @@
 /* =========================================================
-   SOUS — TEMA VISUAL
+   SHOWUP — TEMA VISUAL
    ---------------------------------------------------------
    Este es el único archivo que necesitas tocar para cambiar
    el aspecto de la app. Todo el resto del CSS usa estas
    variables. Cambia un valor, guarda y recarga la página.
-   Puedes ver todas las piezas juntas en #/styleguide.
    ========================================================= */
 
-/* ---------- Fuente (guardada en /fonts para funcionar sin internet) ---------- */
-@font-face {
-  font-family: "Onest";
-  src: url("../fonts/onest.woff2") format("woff2");
-  font-weight: 300 700;
-  font-style: normal;
-  font-display: swap;
-}
-
 :root {
-  /* ---------- Colores base ----------
-     Blanco limpio, grises neutros y un verde fresco, como las referencias.
-     Todo el texto cumple contraste WCAG AA (4,5:1) sobre su fondo.
-     Si cambias un color, revisa el contraste en webaim.org/resources/contrastchecker */
-  --color-bg: #f6f7f9;            /* fondo general (gris muy claro) */
+  /* ---------- Colores ----------
+     Todas las combinaciones de texto cumplen contraste WCAG AA (4,5:1)
+     y los íconos/gráficas 3:1. Si cambias un color, revisa el contraste
+     (por ejemplo en webaim.org/resources/contrastchecker). */
+  --color-bg: #f5f5f2;            /* fondo general (blanco roto) */
   --color-surface: #ffffff;       /* tarjetas */
-  --color-surface-2: #f6f7f9;     /* campos de texto, notas dentro de tarjetas */
-  --color-border: #e8eaed;        /* bordes finos de botones y chips */
-  --color-divider: #f0f1f3;       /* separadores entre filas */
+  --color-surface-2: #f0f0ec;     /* elementos dentro de tarjetas, inputs */
+  --color-border: #e4e4df;        /* bordes sutiles */
+  --color-border-strong: #c9c9c2; /* bordes de botones secundarios */
 
-  --color-text: #1f2328;          /* texto principal (casi negro) */
-  --color-text-muted: #6b7178;    /* texto secundario */
-  --color-text-faint: #6b7178;    /* fechas, ayudas */
-  --color-decor: #e3e5e8;         /* solo decorativo: barra vacía, asa de las hojas */
+  --color-text: #1b1b1f;          /* texto principal */
+  --color-text-muted: #54575e;    /* texto secundario */
+  --color-text-faint: #686c73;    /* texto terciario y valores sugeridos en gris */
 
-  --color-primary: #3a8226;       /* verde: botón principal, chip elegido (texto blanco encima) */
-  --color-on-primary: #ffffff;
-  --color-accent: #6cb33f;        /* verde fresco: íconos, progreso, pestaña activa (sin texto encima) */
-  --color-primary-soft: #eaf5e2;  /* fondo suave del verde */
-  --color-primary-deep: #2f6b1f;  /* texto verde sobre fondo suave o blanco */
+  --color-primary: #1b1b1f;       /* botones principales (pastilla oscura) */
+  --color-on-primary: #ffffff;    /* texto encima de botones principales */
 
-  /* ---------- Estado de cada comida ----------
-     Sin rojo de alarma: "No" no es un fallo, solo un dato. */
-  --eaten-bg: #eaf5e2;    --eaten-ink: #2f6b1f;    --eaten-dot: #6cb33f;    /* ✅ Comido */
-  --swapped-bg: #fff3d9;  --swapped-ink: #875400;  --swapped-dot: #f2b441;  /* 🔄 Cambiado */
-  --skipped-bg: #eef0f2;  --skipped-ink: #4b5157;  --skipped-dot: #a3a8ae;  /* ❌ No */
+  --color-accent: #5b4bc4;        /* violeta: enlaces, selección, gráficas */
+  --color-accent-soft: #eeebfb;   /* fondos suaves del acento */
+  --color-on-accent: #ffffff;     /* texto encima del acento */
 
-  /* ---------- Mealprep (petróleo, para ubicarlo de un vistazo) ----------
-     Solo cambia lo que antes era verde; los textos siguen en el neutro oscuro.
-     Contraste sobre el fondo: texto 13,5:1, secundario 5,3:1, petróleo 5,2:1 (check blanco 6,1:1). */
-  --prep-bg: #dff0f6;
-  --prep-accent: #0e6b85;           /* ícono, "Antes de empezar", barra, casilla y casilla palomeada */
-  --prep-muted: #575d64;            /* texto secundario: el gris normal no llega a 4,5:1 sobre este fondo */
-  --prep-line: rgba(11, 70, 88, 0.14); /* separadores y fondo de la barra */
+  --color-success: #63ab7a;       /* series hechas, semanas cumplidas */
+  --color-success-soft: #e4f2e8;  /* fondo de series hechas */
+  --color-on-success: #1b1b1f;    /* check oscuro: el blanco no tiene contraste suficiente */
 
-  /* ---------- Etiquetas (pastilla pastel con texto oscuro) ---------- */
-  --tag-green-bg: #eaf5e2;  --tag-green-ink: #2f6b1f;
-  --tag-blue-bg: #e8f1fa;   --tag-blue-ink: #2c5f8a;
-  --tag-peach-bg: #fdeee2;  --tag-peach-ink: #8a4a1c;
-  --tag-gray-bg: #eef0f2;   --tag-gray-ink: #4b5157;
+  --color-danger: #b83a27;        /* borrar, errores */
+  --color-danger-soft: #fbe7e3;   /* fondo de la etiqueta "no te gusta" */
+  --color-favorite: #a86f00;      /* estrella de favoritos */
+  --color-warning-text: #8a5600;  /* avisos (respaldo pendiente) */
 
-  /* ---------- Categorías de receta ----------
-     Degradado de la tarjeta cuando la receta no tiene foto (el emoji va encima). */
-  --cat-comida: linear-gradient(150deg, #f1f8ea 0%, #d6ebc4 100%);    /* verde */
-  --cat-desayuno: linear-gradient(150deg, #fff4ea 0%, #fbd9bd 100%);  /* durazno */
-  --cat-colacion: linear-gradient(150deg, #fffaea 0%, #f8e4a8 100%);  /* miel */
-  --cat-modulo: linear-gradient(150deg, #f4f2fc 0%, #ddd7f3 100%);    /* lavanda */
-  --cat-sazon: linear-gradient(150deg, #fff0ec 0%, #f6cbbd 100%);     /* coral */
-  --cat-antojo: linear-gradient(150deg, #fdf0f6 0%, #f3c6dc 100%);    /* fresa */
+  /* Colores pastel para dar identidad (días del plan, tarjetas destacadas).
+     Sobre ellos el texto siempre es oscuro. */
+  --tint-1: #e6e0fb;              /* lila */
+  --tint-2: #d9e7f5;              /* azul */
+  --tint-3: #dcedd6;              /* verde */
+  --tint-4: #f9e1d5;              /* durazno */
+  --tint-5: #f0e8d6;              /* arena */
 
-  /* ---------- Sombras (muy suaves, como flotando) ---------- */
-  --shadow-card: 0 1px 2px rgba(31, 35, 40, 0.03), 0 6px 24px rgba(31, 35, 40, 0.05);
-  --shadow-float: 0 -1px 0 rgba(31, 35, 40, 0.04), 0 -8px 24px rgba(31, 35, 40, 0.04);
-  --shadow-sheet: 0 -8px 40px rgba(31, 35, 40, 0.12);
+  /* Degradados */
+  --gradient-hero:                /* brillo de color arriba de cada pantalla */
+    radial-gradient(70% 55% at 5% 0%, rgba(176, 158, 246, 0.7), transparent 70%),
+    radial-gradient(65% 50% at 100% 0%, rgba(252, 190, 160, 0.65), transparent 70%),
+    radial-gradient(60% 45% at 55% 35%, rgba(160, 200, 240, 0.45), transparent 70%);
+  --gradient-featured: linear-gradient(135deg, #e6e0fb 0%, #d9e7f5 100%); /* tarjeta "Siguiente" */
+  --gradient-streak: linear-gradient(135deg, #dcedd6 0%, #f0e8d6 100%);   /* semanas cumplidas */
+  --gradient-sunrise:             /* frase del día: amanecer */
+    linear-gradient(135deg, #ffe7b8 0%, #ffcfae 50%, #fbbdcb 100%);
+  --color-quote-label: #6b3a1f;   /* etiqueta "Hoy" sobre el amanecer */
+  --color-superset: #3f3191;      /* etiquetas de superserie (A1, A2) sobre lila */
+  --color-record: #6b4a00;        /* texto e ícono de récords sobre arena */
+  --color-week-upcoming: rgba(27, 27, 31, 0.1); /* semanas próximas = fondo de la barra de hito */
+  --color-track: rgba(27, 27, 31, 0.14);        /* pasos pendientes del cuestionario */
+  --color-live-dot: #7ed39a;      /* punto de "entrenamiento en curso" */
+  --color-on-primary-soft: rgba(255, 255, 255, 0.75); /* texto secundario sobre la barra oscura */
+  --gradient-progress-start: #3d7cc9;  /* anillo y barras de progreso */
+  --gradient-progress-end: #5b4bc4;
 
-  /* ---------- Tipografía ----------
-     Onest: clara y suave sin ser redonda, muy buena en tamaños pequeños. */
-  --font-body: "Onest", -apple-system, system-ui, sans-serif;
-  --weight-screen-title: 700; /* solo los títulos grandes de pantalla */
-  --weight-title: 500;        /* nombres de platos y títulos de sección */
-  --weight-label: 500;        /* botones y chips */
+  /* Sombras */
+  --shadow-card: 0 1px 2px rgba(27, 27, 31, 0.04), 0 6px 20px rgba(27, 27, 31, 0.05);
+  --shadow-float: 0 8px 30px rgba(27, 27, 31, 0.12);
+  --shadow-tabbar: 0 -4px 24px rgba(27, 27, 31, 0.08);
+
+  /* Pestaña activa de la barra inferior */
+  --color-tab-active: var(--tint-1);
+
+  /* ---------- Tipografía ---------- */
+  --font-family: "Manrope", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
 
   /* Tamaños relativos al texto base (1rem). En el iPhone, 1rem sigue tu ajuste
-     de "Tamaño del texto". Los px son con el tamaño estándar (16px). */
-  /* Texto igual que en ShowUp: en el iPhone con el tamaño más pequeño, 1rem ≈ 14px. */
-  --font-size-xs: 0.8rem;     /* ~13px — etiquetas */
-  --font-size-sm: 0.875rem;   /* 14px — texto secundario */
-  --font-size-md: 1rem;       /* 16px — texto normal */
-  --font-size-lg: 1.25rem;    /* 20px — nombre del plato, títulos de sección */
-  --font-size-xl: 1.625rem;   /* 26px — títulos de hojas */
-  --font-size-xxl: 2.125rem;  /* 34px — título de pantalla (como iOS) */
+     de "Texto más grande"; con el tamaño más pequeño, 1rem ≈ 14px.
+     Los px de los comentarios son con el tamaño estándar de computadora (16px). */
+  --font-size-xs: 0.8rem;    /* ~13px — etiquetas pequeñas */
+  --font-size-sm: 0.875rem;  /* 14px — texto secundario */
+  --font-size-md: 1rem;      /* 16px — texto normal */
+  --font-size-lg: 1.25rem;   /* 20px — títulos de tarjeta */
+  --font-size-xl: 1.75rem;   /* 28px — títulos de pantalla */
+  --font-size-xxl: 2.5rem;   /* 40px — números destacados */
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
 
   --line-height-tight: 1.2;
   --line-height-normal: 1.5;
@@ -101,35 +102,103 @@
   --space-6: 32px;
   --space-7: 48px;
 
-  --page-gutter: 20px;
-  --card-padding: 20px;
-  --card-gap: 16px;           /* espacio entre tarjetas */
+  --page-gutter: var(--space-5);  /* margen lateral de las pantallas */
+  --card-padding: var(--space-5); /* relleno interior de tarjetas y filas de listas */
 
   /* ---------- Formas ---------- */
-  --radius-sm: 12px;
-  --radius-md: 14px;    /* botones */
-  --radius-lg: 20px;    /* tarjetas */
-  --radius-xl: 28px;    /* hojas que suben desde abajo */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
   --radius-full: 999px;
 
-  /* ---------- Tamaños táctiles (pensados para una mano) ---------- */
-  --tap-min: 44px;
-  --btn-height: 52px;
-  --mark-height: 56px;  /* botones Comido / Cambiado / No */
-  --tabbar-height: 60px;
-  --icon-stroke: 1.75;  /* grosor de línea de los íconos (finos, como las referencias) */
+  /* ---------- Tamaños táctiles ---------- */
+  --tap-min: 48px;          /* alto mínimo de cualquier botón */
+  --tap-large: 56px;        /* área táctil grande */
+
+  /* Botones principales (Empezar, Ver rutina, Guardar…) */
+  --btn-height: 56px;
+  --btn-padding-x: var(--space-5);
+  --tabbar-height: 64px;
 
   /* ---------- Movimiento ---------- */
-  --transition-fast: 160ms ease;
-  --transition-soft: 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  --transition-pop: 420ms cubic-bezier(0.34, 1.56, 0.64, 1); /* rebote al marcar */
+  --transition-fast: 150ms ease;
+}
+
+/* =========================================================
+   MODO OSCURO
+   Se usa cuando el teléfono está en modo oscuro (o lo eliges en Perfil).
+   Mismas variables, otros valores. Contraste verificado igual que el claro.
+   ========================================================= */
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-bg: #121214;
+  --color-surface: #1c1c20;
+  --color-surface-2: #26262b;
+  --color-border: #303036;
+  --color-border-strong: #45454c;
+
+  --color-text: #f1f0ec;
+  --color-text-muted: #a9a8a2;
+  --color-text-faint: #93928c;
+
+  --color-primary: #f1f0ec;       /* botones principales: pastilla clara */
+  --color-on-primary: #121214;
+
+  --color-accent: #a99cf2;
+  --color-accent-soft: #2c2747;
+  --color-on-accent: #121214;
+
+  --color-success: #63ab7a;
+  --color-success-soft: #1f3427;
+  --color-on-success: #121214;
+
+  --color-danger: #ef8a78;
+  --color-danger-soft: #3a211d;
+  --color-favorite: #e8b04a;
+  --color-warning-text: #e8b04a;
+
+  --tint-1: #2e2846;
+  --tint-2: #213244;
+  --tint-3: #233626;
+  --tint-4: #3d2a22;
+  --tint-5: #352f22;
+
+  --gradient-hero:
+    radial-gradient(70% 55% at 5% 0%, rgba(120, 100, 220, 0.35), transparent 70%),
+    radial-gradient(65% 50% at 100% 0%, rgba(220, 130, 100, 0.25), transparent 70%),
+    radial-gradient(60% 45% at 55% 35%, rgba(90, 140, 200, 0.22), transparent 70%);
+  --gradient-featured: linear-gradient(135deg, #2e2846 0%, #213244 100%);
+  --gradient-streak: linear-gradient(135deg, #233626 0%, #352f22 100%);
+  --gradient-sunrise: linear-gradient(135deg, #4a3a22 0%, #4f2f26 50%, #4a2733 100%);
+  --color-quote-label: #f3c49b;
+  --color-superset: #c4b8ff;
+  --color-record: #f0cf86;
+  --gradient-progress-start: #6aa3e6;
+  --gradient-progress-end: #a99cf2;
+
+  --color-week-upcoming: rgba(255, 255, 255, 0.12);
+  --color-track: rgba(255, 255, 255, 0.16);
+  --color-live-dot: #63ab7a;
+  --color-on-primary-soft: rgba(18, 18, 20, 0.7);
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.25);
+  --shadow-float: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --shadow-tabbar: 0 -4px 24px rgba(0, 0, 0, 0.35);
 }
 
 /* ---------- Ajustes solo para el teléfono ---------- */
 @media (pointer: coarse) {
   /* El texto base sigue tu ajuste de iOS (Ajustes → Pantalla y brillo →
-     Tamaño del texto). Si prefieres un tamaño fijo, borra esta regla. */
+     Tamaño del texto). Si prefieres un tamaño fijo, borra esta regla html. */
   html {
     font: -apple-system-body;
+  }
+
+  /* Botones principales más compactos en el teléfono. */
+  :root {
+    --btn-height: 46px;
+    --btn-padding-x: var(--space-4);
   }
 }
